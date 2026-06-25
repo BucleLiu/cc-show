@@ -1,0 +1,42 @@
+{
+  "name": "@bucle/cc-show",
+  "version": "0.1.23",
+  "description": "Local web dashboard for visualizing Claude Code data files",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "cli",
+    "dashboard",
+    "visualization"
+  ],
+  "license": "MIT",
+  "bin": {
+    "ccs": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "version": "npm run build",
+    "prepublishOnly": "npm run build && npm run typecheck"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "marked": "^14.0.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.15",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.9"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
