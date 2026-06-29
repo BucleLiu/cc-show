@@ -4,9 +4,8 @@
  */
 import type { DatabaseSync as DatabaseSyncType } from 'node:sqlite'
 import { existsSync, readFileSync } from 'node:fs'
-import { basename } from 'node:path'
 import { CX_DB_PATH } from './cx-stats.js'
-import { isPlanHandoffTitle } from './cx-history.js'
+import { isPlanHandoffTitle, resolveProject } from './cx-rollout.js'
 
 const _sqliteMod = 'node:sqlite'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -26,6 +25,7 @@ export interface CxPlan {
   projectPath: string
   timeCreated: number
   timeUpdated: number
+  isTemp?: boolean
 }
 
 export interface CxPlansData {
@@ -179,14 +179,16 @@ export function loadCxPlans(): CxPlansData {
         const title = extractTitle(planContent)
         const summary = extractSummary(planContent)
 
+        const rp = resolveProject(t.cwd)
         plans.push({
           id: t.id,
           title,
           status,
           summary,
           content: planContent,
-          projectName: basename(t.cwd),
-          projectPath: t.cwd,
+          projectName: rp.name,
+          projectPath: rp.directory,
+          isTemp: rp.isTemp,
           timeCreated: t.created_at,
           timeUpdated: t.updated_at,
         })

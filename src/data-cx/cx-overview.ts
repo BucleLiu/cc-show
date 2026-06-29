@@ -37,6 +37,7 @@ export interface CxOverviewProject {
   totalTokens: number
   sessionCount: number
   lastActive: string   // YYYY-MM-DD HH:MM
+  isTemp?: boolean
 }
 
 export interface CxOverviewData {
@@ -167,6 +168,7 @@ export function loadCxOverview(): CxOverviewData {
       totalTokens:  p.totalTokens,
       sessionCount: p.sessionCount,
       lastActive:   p.lastActive,
+      isTemp:       p.isTemp,
     }))
 
   return {

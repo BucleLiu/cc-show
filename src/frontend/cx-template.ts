@@ -1661,7 +1661,7 @@ function renderPlanContent(plan) {
     '<div style="flex:1;min-width:0;">' +
     '<div class="plan-content-title">' + esc(plan.title) + '</div>' +
     '<div class="plan-content-meta">' + esc(plan.projectName) + ' \\u00b7 ' + statusLabel + ' \\u00b7 ' + modDate + '</div>' +
-    '<div class="plan-path-row" onclick="copyPlanPath()" title="' + esc(plan.projectPath) + '">' +
+    '<div class="plan-path-row" onclick="copyPlanPath()" title="' + esc(plan.projectPath) + '"' + (plan.isTemp ? ' style="display:none"' : '') + '>' +
     '<span class="plan-path-label">&#128196;</span>' +
     '<span class="plan-path-text" id="plan-path-text">' + esc(plan.projectPath) + '</span>' +
     '<span class="plan-path-copied" id="plan-path-copied">\\u2713 \\u5df2\\u590d\\u5236</span>' +
@@ -1868,7 +1868,7 @@ function renderStatsProjectList() {
         '<div class="stats-proj-rank ' + rankCls + '">' + (i+1) + '</div>' +
         '<div class="stats-proj-main">' +
           '<div class="stats-proj-name">' + highlight(p.name, S.stats.query) + '</div>' +
-          '<div class="stats-proj-path">' + esc(p.directory) + '</div>' +
+          '<div class="stats-proj-path">' + (p.isTemp ? '—' : esc(p.directory)) + '</div>' +
           '<div class="stats-proj-bar"><div class="stats-proj-bar-fill" style="width:' + pct + '%"></div></div>' +
         '</div>' +
         '<div class="stats-proj-nums">' +
@@ -1957,7 +1957,7 @@ function renderStatsDetail(p) {
   el.innerHTML =
     '<div class="stats-detail-head">' +
       '<div class="stats-detail-title">' + esc(p.name) + '</div>' +
-      '<div class="stats-detail-path">' + esc(p.directory) + '</div>' +
+      '<div class="stats-detail-path">' + (p.isTemp ? '—' : esc(p.directory)) + '</div>' +
       '<div class="stats-detail-meta">最后活跃：' + esc(p.lastActive) + '</div>' +
     '</div>' +
     '<div class="stats-detail-scroll">' +
@@ -2095,7 +2095,7 @@ function renderCxOverview() {
         '<div class="ov-proj-item">' +
           '<div class="ov-rank '+(rankCls[i]||'rn')+'">'+(i+1)+'</div>' +
           '<div class="ov-proj-body">' +
-            '<div class="ov-proj-name" title="'+esc(p.directory || '')+'">'+esc(p.name)+'</div>' +
+            '<div class="ov-proj-name" title="'+(p.isTemp ? '' : esc(p.directory || ''))+'">'+esc(p.name)+'</div>' +
             '<div class="ov-proj-bar-wrap"><div class="ov-proj-bar-fill" style="width:'+pct+'%"></div></div>' +
           '</div>' +
           '<div class="ov-proj-cost">'+fmtTokens(p.totalTokens || 0)+'</div>' +

@@ -4,8 +4,17 @@
  */
 import type { DatabaseSync as DatabaseSyncType } from 'node:sqlite'
 import { existsSync, readFileSync } from 'node:fs'
-import { basename } from 'node:path'
 import { CX_DB_PATH } from './cx-stats.js'
+import {
+  isInternalAssistantText,
+  isInternalUserText,
+  isPlanHandoffText,
+  parsePayload,
+  resolveProject,
+  resolveSessionTitle,
+  textFromContent,
+  type JsonLine,
+} from './cx-rollout.js'
 
 const _sqliteMod = 'node:sqlite'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -32,6 +41,7 @@ export interface CxProject {
   name: string
   sessionCount: number
   lastActive: number    // unix seconds
+  isTemp: boolean
 }
 
 export interface CxHistoryData {
@@ -67,19 +77,6 @@ interface ThreadRow {
   created_at: number
   updated_at: number
   archived: number
-}
-
-export function isPlanHandoffTitle(text: string): boolean {
-  return text.startsWith('A previous agent produced the plan below to accomplish the user')
-    && text.includes('Treat the plan as the source of user intent')
-}
-
-function isPlanHandoffText(text: string): boolean {
-  return isPlanHandoffTitle(text)
-}
-
-function isInternalAssistantText(text: string): boolean {
-  return text.startsWith('<proposed_plan>')
 }
 
 // ── DB helper ─────────────────────────────────────────────────────────────────
@@ -118,35 +115,41 @@ export function loadCxHistory(): CxHistoryData {
 
       if (visibleThreads.length === 0) return empty
 
-      const sessions: CxSession[] = visibleThreads.map(t => ({
-        id:           t.id,
-        title:        t.title || '未命名会话',
-        cwd:          t.cwd,
-        projectName:  basename(t.cwd),
-        model:        t.model || 'unknown',
-        tokensUsed:   t.tokens_used ?? 0,
-        msgCount:     Math.max(1, Math.round((t.tokens_used ?? 0) / 500)),
-        timeCreated:  t.created_at,
-        timeUpdated:  t.updated_at,
-      }))
-
-      // Group by cwd → project list
-      const projectMap = new Map<string, { count: number; lastActive: number }>()
-      for (const t of visibleThreads) {
-        if (!projectMap.has(t.cwd)) {
-          projectMap.set(t.cwd, { count: 0, lastActive: 0 })
+      const sessions: CxSession[] = visibleThreads.map(t => {
+        const rp = resolveProject(t.cwd)
+        return {
+          id:           t.id,
+          title:        resolveSessionTitle(t.rollout_path, t.title),
+          cwd:          rp.directory,
+          projectName:  rp.name,
+          model:        t.model || 'unknown',
+          tokensUsed:   t.tokens_used ?? 0,
+          msgCount:     Math.max(1, Math.round((t.tokens_used ?? 0) / 500)),
+          timeCreated:  t.created_at,
+          timeUpdated:  t.updated_at,
         }
-        const p = projectMap.get(t.cwd)!
+      })
+
+      // Group by resolved project directory → project list
+      const projectMap = new Map<string, { count: number; lastActive: number; name: string; isTemp: boolean }>()
+      for (const t of visibleThreads) {
+        const rp = resolveProject(t.cwd)
+        let p = projectMap.get(rp.directory)
+        if (!p) {
+          p = { count: 0, lastActive: 0, name: rp.name, isTemp: rp.isTemp }
+          projectMap.set(rp.directory, p)
+        }
         p.count += 1
         if (t.updated_at > p.lastActive) p.lastActive = t.updated_at
       }
 
       const projects: CxProject[] = [...projectMap.entries()]
-        .map(([directory, { count, lastActive }]) => ({
+        .map(([directory, { count, lastActive, name, isTemp }]) => ({
           directory,
-          name: basename(directory),
+          name,
           sessionCount: count,
           lastActive,
+          isTemp,
         }))
         .sort((a, b) => b.lastActive - a.lastActive)
 
@@ -166,57 +169,6 @@ export function loadCxHistory(): CxHistoryData {
 }
 
 // ── Conversation detail ───────────────────────────────────────────────────────
-
-/** Normalize a Python dict string to valid JSON (single→double quotes, None→null) */
-function normalizePythonDict(raw: string): string {
-  let s = raw.replace(/\bNone\b/g, 'null')
-  s = s.replace(/\bTrue\b/g, 'true').replace(/\bFalse\b/g, 'false')
-  return s
-}
-
-function tryParsePythonJson(raw: string): Record<string, unknown> | null {
-  try {
-    return JSON.parse(raw) as Record<string, unknown>
-  } catch {
-    try {
-      return JSON.parse(normalizePythonDict(raw)) as Record<string, unknown>
-    } catch {
-      return null
-    }
-  }
-}
-
-interface JsonLine {
-  type?: string
-  timestamp?: string
-  payload?: Record<string, unknown> | string
-}
-
-function parsePayload(payload: JsonLine['payload']): Record<string, unknown> | null {
-  if (!payload) return null
-  if (typeof payload === 'object') return payload
-  return tryParsePythonJson(payload)
-}
-
-function textFromContent(content: unknown, textType: string): string {
-  if (!Array.isArray(content)) return ''
-  const parts: string[] = []
-  for (const c of content as Array<Record<string, unknown>>) {
-    if (c.type === textType && typeof c.text === 'string') {
-      parts.push(c.text)
-    }
-  }
-  return parts.join('\n').trim()
-}
-
-function isInternalUserText(text: string): boolean {
-  return isPlanHandoffText(text)
-    || text.startsWith('<permissions instructions>')
-    || text.startsWith('<collaboration_mode>')
-    || text.startsWith('<skills_instructions>')
-    || text.startsWith('<environment_context>')
-    || text.startsWith('# AGENTS.md instructions')
-}
 
 export function loadCxConversation(sessionId: string): CxConversationResult {
   if (!sessionId) return { messages: [], path: '' }

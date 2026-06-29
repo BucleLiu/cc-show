@@ -14,7 +14,8 @@ const { DatabaseSync } = require(_sqliteMod) as { DatabaseSync: typeof DatabaseS
 type DbInstance = InstanceType<typeof DatabaseSyncType>
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { join, basename } from 'node:path'
+import { join } from 'node:path'
+import { resolveProject, resolveSessionTitle } from './cx-rollout.js'
 
 // ── DB path ──────────────────────────────────────────────────────────────────
 export const CX_DB_PATH = join(homedir(), '.codex', 'state_5.sqlite')
@@ -46,6 +47,7 @@ export interface CxProjectStat {
   lastActive: string   // YYYY-MM-DD HH:MM
   sessions: CxSessionStat[]
   daily: CxDailyStat[]
+  isTemp: boolean
 }
 
 export interface CxStatsSummary {
@@ -112,18 +114,21 @@ export function loadCxStats(): CxStatsData {
 
       if (threads.length === 0) return empty
 
-      // 2. Group by cwd → project
+      // 2. Group by resolved project directory → project
       const projectMap = new Map<string, {
         threads: ThreadRow[]
         lastUpdated: number
+        name: string
+        isTemp: boolean
       }>()
 
       for (const t of threads) {
-        const dir = t.cwd
-        if (!projectMap.has(dir)) {
-          projectMap.set(dir, { threads: [], lastUpdated: 0 })
+        const rp = resolveProject(t.cwd)
+        let p = projectMap.get(rp.directory)
+        if (!p) {
+          p = { threads: [], lastUpdated: 0, name: rp.name, isTemp: rp.isTemp }
+          projectMap.set(rp.directory, p)
         }
-        const p = projectMap.get(dir)!
         p.threads.push(t)
         if (t.updated_at > p.lastUpdated) p.lastUpdated = t.updated_at
       }
@@ -131,7 +136,7 @@ export function loadCxStats(): CxStatsData {
       // 3. Build project stats
       const projects: CxProjectStat[] = []
 
-      for (const [dir, { threads: pThreads, lastUpdated }] of projectMap) {
+      for (const [dir, { threads: pThreads, lastUpdated, name, isTemp }] of projectMap) {
         let totalTokens = 0
         for (const t of pThreads) totalTokens += t.tokens_used ?? 0
 
@@ -140,7 +145,7 @@ export function loadCxStats(): CxStatsData {
           const updated = new Date(t.updated_at * 1000)
           return {
             id:         t.id,
-            title:      t.title || '未命名会话',
+            title:      resolveSessionTitle(t.rollout_path, t.title),
             tokensUsed: t.tokens_used ?? 0,
             model:      t.model || 'unknown',
             date:       created.toISOString().slice(0, 10),
@@ -163,12 +168,13 @@ export function loadCxStats(): CxStatsData {
 
         projects.push({
           directory:    dir,
-          name:         basename(dir),
+          name,
           sessionCount: pThreads.length,
           totalTokens,
           lastActive:   fmtDatetime(new Date(lastUpdated * 1000)),
           sessions:     sessionStats,
           daily,
+          isTemp,
         })
       }
 
