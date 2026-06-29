@@ -37,6 +37,11 @@ node_modules/
 package-lock.json
 
 # ===========================
+# Build Output
+# ===========================
+dist/
+
+# ===========================
 # Test Scripts (local only)
 # ===========================
 **/test.sh
