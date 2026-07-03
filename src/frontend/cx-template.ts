@@ -4,6 +4,7 @@
  * Data comes from state_5.sqlite + session JSONL via /api/cx/* endpoints.
  */
 import { NOTES_CSS, NOTES_NAV_ITEM, NOTES_MODULE_HTML, NOTES_MODAL_HTML, NOTES_JS, NOTES_MARKED } from './notes-module.js'
+import { TOOLS_CSS, TOOLS_NAV_ITEM, TOOLS_MODULE_HTML, TOOLS_JS } from './tools-module.js'
 
 export const CX_HTML_TEMPLATE = `<!DOCTYPE html>
 <html lang="zh" data-theme="light">
@@ -969,6 +970,7 @@ mark { background: rgba(251,191,36,0.2); color: var(--yellow); border-radius: 2p
 .spinner { width: 14px; height: 14px; border: 2px solid var(--border-muted); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
 .no-results { padding: 24px; text-align: center; color: var(--text-muted); font-size: 12px; }
 ${NOTES_CSS}
+${TOOLS_CSS}
 </style>
 <script>${NOTES_MARKED}</script>
 </head>
@@ -999,6 +1001,7 @@ ${NOTES_CSS}
       <div class="nav-tooltip">&#35745;&#21010;&#25991;&#20214;</div>
     </div>
 ${NOTES_NAV_ITEM}
+${TOOLS_NAV_ITEM}
 
     <div class="nav-spacer"></div>
 
@@ -1157,6 +1160,7 @@ ${NOTES_NAV_ITEM}
         </div>
       </div>
 ${NOTES_MODULE_HTML}
+${TOOLS_MODULE_HTML}
     </div>
   </div>
 </div>
@@ -1243,7 +1247,7 @@ function unixMs(ts) {
 }
 
 // ── Hash State ──
-const VALID_MODULES = ['overview', 'history', 'stats', 'plans', 'notes'];
+const VALID_MODULES = ['overview', 'history', 'stats', 'plans', 'notes', 'tools'];
 function parseHash() {
   const raw = location.hash.replace(/^#/, '');
   if (!raw) return { module: 'overview', params: {} };
@@ -1334,6 +1338,9 @@ function switchModule(id, pushHash) {
     if (!S.plans.data) loadPlans(); else renderPlansList();
   } else if (id === 'notes') {
     document.getElementById('topbar-title').textContent = '\u7b14\u8bb0';
+    document.getElementById('topbar-stats').innerHTML = '';
+  } else if (id === 'tools') {
+    document.getElementById('topbar-title').textContent = '\u5de5\u5177\u7bb1';
     document.getElementById('topbar-stats').innerHTML = '';
   }
 }
@@ -2396,6 +2403,8 @@ function restoreStateFromHash(module, params) {
   // Notes init must run before switchModule so the hook is in place
   notesInit();
   notesHookSwitchModule();
+  toolsInit();
+  toolsHookSwitchModule();
 
   // ── Panel init ──
   initPanelCollapse(document.querySelector('.project-panel'), 'project');
@@ -2433,6 +2442,7 @@ function restoreStateFromHash(module, params) {
   });
 })();
 ${NOTES_JS}
+${TOOLS_JS}
 </script>
 </body>
 </html>`

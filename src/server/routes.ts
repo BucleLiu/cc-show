@@ -48,6 +48,12 @@ import {
   createClaudeMd,
   ClaudeMdExistsError,
 } from '../data/claude-md.js'
+import {
+  listJsonFiles,
+  getJsonFileContent,
+  saveJsonFile,
+  deleteJsonFile,
+} from '../data/tools.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -78,11 +84,18 @@ function injectPromptsFlag(html: string, enabled: boolean): string {
   return html.replace('</head>', tag + '</head>')
 }
 
+/** Inject window.CCS_TOOLS flag so the frontend knows if tools are enabled. */
+function injectToolsFlag(html: string, enabled: boolean): string {
+  const tag = `<script>window.CCS_TOOLS=${enabled};</script>`
+  return html.replace('</head>', tag + '</head>')
+}
+
 /** Apply all server-side HTML injections for a page response. */
-function buildPageHtml(template: string, modes: string[], noteEnabled: boolean, promptsEnabled: boolean): string {
+function buildPageHtml(template: string, modes: string[], noteEnabled: boolean, promptsEnabled: boolean, toolsEnabled: boolean): string {
   let html = injectModes(template, modes)
   html = injectNoteFlag(html, noteEnabled)
   html = injectPromptsFlag(html, promptsEnabled)
+  html = injectToolsFlag(html, toolsEnabled)
   return html
 }
 
@@ -127,13 +140,14 @@ export async function handleRequest(
   const codexEnabled = enabledModes.includes('codex')
   const noteEnabled = cfg.note === true || process.env.CCS_NOTE === '1'
   const promptsEnabled = cfg.prompts !== false
+  const toolsEnabled = cfg.tools === true || process.env.CCS_TOOLS === '1'
 
   // ── GET ──────────────────────────────────────────────────────────────────
 
   if (method === 'GET') {
     // ── Pages ──────────────────────────────────────────────────────────────
     if (path === '/') {
-      return sendHtml(res, buildPageHtml(HTML_TEMPLATE, enabledModes, noteEnabled, promptsEnabled))
+      return sendHtml(res, buildPageHtml(HTML_TEMPLATE, enabledModes, noteEnabled, promptsEnabled, toolsEnabled))
     }
     if (path === '/cm') {
       if (!codemakerEnabled) {
@@ -142,7 +156,7 @@ export async function handleRequest(
         res.end()
         return
       }
-      return sendHtml(res, buildPageHtml(CM_HTML_TEMPLATE, enabledModes, noteEnabled, promptsEnabled))
+      return sendHtml(res, buildPageHtml(CM_HTML_TEMPLATE, enabledModes, noteEnabled, promptsEnabled, toolsEnabled))
     }
     if (path === '/cx') {
       if (!codexEnabled) {
@@ -150,7 +164,7 @@ export async function handleRequest(
         res.end()
         return
       }
-      return sendHtml(res, buildPageHtml(CX_HTML_TEMPLATE, enabledModes, noteEnabled, promptsEnabled))
+      return sendHtml(res, buildPageHtml(CX_HTML_TEMPLATE, enabledModes, noteEnabled, promptsEnabled, toolsEnabled))
     }
     if (path === '/claude-md') {
       return sendHtml(res, CLAUDEMD_TEMPLATE)
@@ -386,6 +400,45 @@ export async function handleRequest(
       }
     }
 
+    // ── Tools API (GET) ─────────────────────────────────────────────────────
+    if (path.startsWith('/api/tools/')) {
+      if (!toolsEnabled) {
+        res.writeHead(403, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Tools feature is not enabled' }))
+        return
+      }
+
+      // GET /api/tools/json-format — list saved files
+      if (path === '/api/tools/json-format') {
+        try {
+          return sendJson(res, listJsonFiles())
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(err) }))
+          return
+        }
+      }
+
+      // GET /api/tools/json-format/:name — get single file content
+      const toolsFileMatch = path.match(/^\/api\/tools\/json-format\/(.+)$/)
+      if (toolsFileMatch) {
+        const name = decodeURIComponent(toolsFileMatch[1])
+        try {
+          const file = getJsonFileContent(name)
+          if (!file) {
+            res.writeHead(404, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'File not found' }))
+            return
+          }
+          return sendJson(res, file)
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(err) }))
+          return
+        }
+      }
+    }
+
     // ── CLAUDE.md API (GET) ─────────────────────────────────────────────────
     if (path === '/api/claude-md') {
       const scope = url.searchParams.get('scope')
@@ -457,6 +510,32 @@ export async function handleRequest(
           }
           res.writeHead(500, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: String(err) }))
+          return
+        }
+      }
+    }
+
+    // ── Tools API (DELETE) ─────────────────────────────────────────────────
+    if (path.startsWith('/api/tools/')) {
+      if (!toolsEnabled) {
+        res.writeHead(403, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Tools feature is not enabled' }))
+        return
+      }
+      // DELETE /api/tools/json-format/:name
+      const toolsFileMatch = path.match(/^\/api\/tools\/json-format\/(.+)$/)
+      if (toolsFileMatch) {
+        const name = decodeURIComponent(toolsFileMatch[1])
+        try {
+          deleteJsonFile(name)
+          res.writeHead(204)
+          res.end()
+          return
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err)
+          const status = msg.includes('not found') ? 404 : 400
+          res.writeHead(status, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: msg }))
           return
         }
       }
@@ -783,6 +862,46 @@ export async function handleRequest(
               return
             }
             res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: String(err) }))
+          }
+        })
+        return
+      }
+    }
+
+    // ── Tools API (POST) ───────────────────────────────────────────────────
+    if (path.startsWith('/api/tools/')) {
+      if (!toolsEnabled) {
+        res.writeHead(403, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: 'Tools feature is not enabled' }))
+        return
+      }
+      // POST /api/tools/json-format — save a file
+      if (path === '/api/tools/json-format') {
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          try {
+            const input = JSON.parse(body) as { name?: string; content?: string }
+            if (!input.name) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'name is required' }))
+              return
+            }
+            if (typeof input.content !== 'string') {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'content is required' }))
+              return
+            }
+            const result = saveJsonFile(input.name, input.content)
+            const bodyBuf = Buffer.from(JSON.stringify(result), 'utf-8')
+            res.writeHead(201, {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Content-Length': bodyBuf.length,
+            })
+            res.end(bodyBuf)
+          } catch (err) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ error: String(err) }))
           }
         })

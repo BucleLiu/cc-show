@@ -2,6 +2,7 @@
 // Single-file SPA with zero external dependencies (no CDN, no npm, no frameworks)
 import { NOTES_CSS, NOTES_NAV_ITEM, NOTES_MODULE_HTML, NOTES_MODAL_HTML, NOTES_JS, NOTES_MARKED } from './notes-module.js'
 import { PROMPTS_CSS, PROMPTS_NAV_ITEM, PROMPTS_MODULE_HTML, PROMPTS_JS } from './prompts-module.js'
+import { TOOLS_CSS, TOOLS_NAV_ITEM, TOOLS_MODULE_HTML, TOOLS_JS } from './tools-module.js'
 
 export const HTML_TEMPLATE = `<!DOCTYPE html>
 <html lang="zh" data-theme="light">
@@ -1787,6 +1788,7 @@ mark { background: rgba(251,191,36,0.2); color: var(--amber); border-radius: 2px
 }
 ${NOTES_CSS}
 ${PROMPTS_CSS}
+${TOOLS_CSS}
 </style>
 <script>${NOTES_MARKED}</script>
 </head>
@@ -1817,6 +1819,7 @@ ${PROMPTS_CSS}
     </div>
 ${PROMPTS_NAV_ITEM}
 ${NOTES_NAV_ITEM}
+${TOOLS_NAV_ITEM}
     <div class="nav-spacer"></div>
     <div class="nav-item" id="theme-btn" onclick="toggleTheme()">
       <div class="nav-item-icon" id="theme-icon">&#9728;</div>
@@ -2018,6 +2021,7 @@ ${NOTES_NAV_ITEM}
       </div>
 ${PROMPTS_MODULE_HTML}
 ${NOTES_MODULE_HTML}
+${TOOLS_MODULE_HTML}
     </div>
   </div>
 </div>
@@ -2127,7 +2131,7 @@ function highlight(text, query) {
 }
 
 // ── Hash State ──
-const VALID_MODULES = ['overview', 'stats', 'history', 'plans', 'prompts', 'notes'];
+const VALID_MODULES = ['overview', 'stats', 'history', 'plans', 'prompts', 'notes', 'tools'];
 function parseHash() {
   const raw = location.hash.replace(/^#/, '');
   if (!raw) return { module: 'overview', params: {} };
@@ -2226,6 +2230,9 @@ function switchModule(id, pushHash = true) {
   } else if (id === 'notes') {
     document.getElementById('topbar-title').textContent = '\u7b14\u8bb0';
     document.getElementById('topbar-stats').innerHTML = '';
+  } else if (id === 'tools') {
+    document.getElementById('topbar-title').textContent = '\u5de5\u5177\u7bb1';
+    document.getElementById('topbar-stats').innerHTML = '';
   }
 }
 
@@ -2241,6 +2248,7 @@ function refreshData() {
   else if (S.activeModule === 'history') { S.history.data = null; loadHistory(); }
   else if (S.activeModule === 'plans') { S.plans.data = null; loadPlans(); }
   else if (S.activeModule === 'prompts') { S.prompts.data = null; loadPrompts(); }
+  else if (S.activeModule === 'tools') { /* tools is mostly client-side, no server data to reload */ }
   else if (S.activeModule === 'stats') {
     if (S.stats.activeTab === 'tokens') { S.stats.data = null; loadStats(); }
     else { S.stats.skillData = null; loadSkillStats(); }
@@ -4067,6 +4075,8 @@ window.addEventListener('load', () => {
   notesInit();
   notesHookSwitchModule();
   promptsInit();
+  toolsInit();
+  toolsHookSwitchModule();
 
   // ── Panel init (collapse + resize) ──
   initPanelCollapse(document.querySelector('.project-panel'), 'project');
@@ -4111,6 +4121,7 @@ window.addEventListener('load', () => {
 });
 ${PROMPTS_JS}
 ${NOTES_JS}
+${TOOLS_JS}
 </script>
 </body>
 </html>`
