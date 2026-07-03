@@ -279,6 +279,75 @@ function isRgAvailable(): boolean {
   return rgAvailable
 }
 
+/**
+ * 验证关键词是否出现在 JSONL 文件的可见 text 块中（与 loadSessionConversation
+ * 提取逻辑一致：仅 type="text" 的 user/assistant 消息，排除系统内部消息）。
+ */
+function isKeywordInTextBlocks(filePath: string, kw: string): boolean {
+  const lowerKw = kw.toLowerCase()
+  let raw: string
+  try {
+    raw = readFileSync(filePath, 'utf-8')
+  } catch {
+    return false
+  }
+
+  for (const line of raw.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    let obj: Record<string, unknown>
+    try {
+      obj = JSON.parse(trimmed) as Record<string, unknown>
+    } catch {
+      continue
+    }
+
+    const type = obj.type as string | undefined
+    const msg = obj.message as Record<string, unknown> | undefined
+
+    if (type === 'user' && msg) {
+      const content = msg.content
+      let text = ''
+      if (typeof content === 'string') {
+        text = content
+      } else if (Array.isArray(content)) {
+        const parts: string[] = []
+        for (const c of content as ContentBlock[]) {
+          if (c.type === 'text' && typeof c.text === 'string') {
+            parts.push(c.text)
+          }
+        }
+        text = parts.join('\n')
+      }
+      if (text) {
+        // 跳过系统内部消息（与 loadSessionConversation 一致）
+        if (
+          text.startsWith('<local-command-caveat>') ||
+          text.startsWith('<command-name>') ||
+          text.startsWith('<local-command-stdout>')
+        ) {
+          continue
+        }
+        if (text.toLowerCase().includes(lowerKw)) return true
+      }
+    } else if (type === 'assistant' && msg) {
+      const content = msg.content
+      if (Array.isArray(content)) {
+        const parts: string[] = []
+        for (const c of content as ContentBlock[]) {
+          if (c.type === 'text' && typeof c.text === 'string') {
+            parts.push(c.text)
+          }
+        }
+        const text = parts.join('\n')
+        if (text && text.toLowerCase().includes(lowerKw)) return true
+      }
+    }
+  }
+
+  return false
+}
+
 export async function searchSessionsByContent(
   kw: string,
   projectPath: string,
@@ -309,12 +378,24 @@ export async function searchSessionsByContent(
         resolve({ fallback: true, sessionIds: [] })
         return
       }
-      const sessionIds = stdout
+
+      const filePaths = stdout
         .split('\n')
         .map(l => l.trim())
         .filter(Boolean)
-        .map(l => basename(l).replace(/\.jsonl$/, ''))
-      resolve({ fallback: false, sessionIds })
+
+      // 二次验证：仅保留关键词出现在可见 text 块中的会话
+      const verifiedIds: string[] = []
+      for (const fp of filePaths) {
+        const sid = basename(fp).replace(/\.jsonl$/, '')
+        // 非 .jsonl 文件跳过（如 plans/*.md 等）
+        if (!sid || sid === basename(fp)) continue
+        if (isKeywordInTextBlocks(fp, kw)) {
+          verifiedIds.push(sid)
+        }
+      }
+
+      resolve({ fallback: false, sessionIds: verifiedIds })
     })
   })
 }

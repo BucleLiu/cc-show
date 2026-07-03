@@ -275,6 +275,8 @@ html, body { height: 100%; background: var(--bg-base); color: var(--text-pri); o
   background: var(--bg-surface);
   flex-shrink: 0;
   overflow: hidden;
+  position: relative;
+  transition: width 0.2s ease;
 }
 .panel-header {
   padding: 12px 14px 8px;
@@ -283,7 +285,79 @@ html, body { height: 100%; background: var(--bg-base); color: var(--text-pri); o
   letter-spacing: 1px; text-transform: uppercase;
   border-bottom: 1px solid var(--border-sub);
   flex-shrink: 0;
+  position: relative;
+  display: flex; align-items: center;
 }
+.panel-header-text { flex: 1; }
+.panel-toggle-btn {
+  flex-shrink: 0;
+  width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  border: none; background: none;
+  color: var(--text-muted);
+  font-size: 9px;
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s;
+  padding: 0; line-height: 1;
+}
+.panel-header:hover .panel-toggle-btn,
+.panel-header .panel-toggle-btn.always-show,
+.panel-header.always-show-toggle .panel-toggle-btn { opacity: 1; }
+.panel-toggle-btn:hover { background: var(--bg-hover); color: var(--text-sec); }
+
+/* ── Panel collapse ── */
+.panel-collapsed {
+  width: 28px !important;
+  min-width: 28px !important;
+}
+.panel-collapsed .panel-scroll,
+.panel-collapsed .panel-search-wrap,
+.panel-collapsed .panel-resize-handle { display: none !important; }
+.panel-collapsed .panel-header {
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 6px 2px;
+  border-bottom: none;
+}
+.panel-collapsed .panel-header-text { display: none; }
+.panel-collapsed .panel-toggle-btn {
+  opacity: 1;
+}
+.panel-collapsed .claudemd-icon { display: none; }
+
+/* Stats panel collapsed */
+.panel-collapsed .stats-panel-header {
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 6px 2px;
+  border-bottom: none;
+}
+.panel-collapsed .stats-panel-header-left,
+.panel-collapsed .stats-panel-header .compute-btn { display: none; }
+.panel-collapsed .stats-panel-header .panel-toggle-btn { opacity: 1; }
+
+/* ── Panel resize handle ── */
+.panel-resize-handle {
+  position: absolute;
+  right: -2px; top: 0; bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+  z-index: 10;
+  background: transparent;
+  transition: background 0.12s;
+}
+.panel-resize-handle:hover,
+.panel-resize-handle.active { background: var(--accent); opacity: 0.2; }
+
+/* ── Resizing state ── */
+body.resizing,
+body.resizing * { cursor: col-resize !important; user-select: none !important; }
 .panel-scroll { flex: 1; overflow-y: auto; padding: 6px; }
 
 .project-item {
@@ -360,6 +434,8 @@ html, body { height: 100%; background: var(--bg-base); color: var(--text-pri); o
   background: var(--bg-base);
   flex-shrink: 0;
   overflow: hidden;
+  position: relative;
+  transition: width 0.2s ease;
 }
 .session-empty {
   flex: 1; display: flex; flex-direction: column;
@@ -725,6 +801,8 @@ mark { background: rgba(251,191,36,0.2); color: var(--amber); border-radius: 2px
   background: var(--bg-surface);
   flex-shrink: 0;
   overflow: hidden;
+  position: relative;
+  transition: width 0.2s ease;
 }
 .plan-card {
   padding: 11px 14px;
@@ -1209,12 +1287,18 @@ mark { background: rgba(251,191,36,0.2); color: var(--amber); border-radius: 2px
   background: var(--bg-surface);
   flex-shrink: 0;
   overflow: hidden;
+  position: relative;
+  transition: width 0.2s ease;
 }
 .stats-panel-header {
   padding: 10px 14px;
   border-bottom: 1px solid var(--border-sub);
   display: flex; align-items: center; justify-content: space-between;
   flex-shrink: 0;
+  position: relative;
+}
+.stats-panel-header-left {
+  display: flex; align-items: center; gap: 8px;
 }
 .stats-panel-title {
   font-size: 10px; font-weight: 700;
@@ -1811,16 +1895,17 @@ ${NOTES_NAV_ITEM}
       <!-- History Module -->
       <div id="mod-history" class="module">
         <div class="project-panel">
-          <div class="panel-header" style="display:flex;align-items:center;"><span style="flex:1">&#39033;&#30446;</span><button class="claudemd-icon" onclick="openClaudeMd('global')" title="&#20840;&#23616; CLAUDE.md">&#128196;</button></div>
+          <div class="panel-header" style="display:flex;align-items:center;"><span class="panel-header-text">&#39033;&#30446;</span><button class="claudemd-icon" onclick="openClaudeMd('global')" title="&#20840;&#23616; CLAUDE.md">&#128196;</button><button class="panel-toggle-btn" title="&#25240;&#21472;&#38754;&#26495;" onclick="event.stopPropagation();togglePanelCollapse(this.closest('.project-panel'),'project')">&#9664;</button></div>
           <div class="panel-search-wrap">
             <input type="text" id="project-search" class="panel-search" placeholder="&#25628;&#32034;&#39033;&#30446;..." autocomplete="off">
           </div>
           <div class="panel-scroll" id="project-list">
             <div class="loading"><div class="spinner"></div> &#21152;&#36733;&#20013;&#8230;</div>
           </div>
+          <div class="panel-resize-handle"></div>
         </div>
         <div class="session-panel">
-          <div class="panel-header">&#20250;&#35805;</div>
+          <div class="panel-header"><span class="panel-header-text">&#20250;&#35805;</span><button class="panel-toggle-btn" title="&#25240;&#21472;&#38754;&#26495;" onclick="event.stopPropagation();togglePanelCollapse(this.closest('.session-panel'),'session')">&#9664;</button></div>
           <div class="panel-search-wrap">
             <input type="text" id="session-search" class="panel-search" placeholder="&#25628;&#32034;&#20250;&#35805;..." autocomplete="off">
           </div>
@@ -1830,6 +1915,7 @@ ${NOTES_NAV_ITEM}
               <div>&#36873;&#25321;&#19968;&#20010;&#39033;&#30446;&#26597;&#30475;&#20250;&#35805;</div>
             </div>
           </div>
+          <div class="panel-resize-handle"></div>
         </div>
         <div class="message-panel">
           <div id="message-panel-content" class="message-empty">
@@ -1851,10 +1937,15 @@ ${NOTES_NAV_ITEM}
         <div id="stats-token-panel" class="stats-sub-panel">
           <div class="stats-list-panel">
             <div class="stats-panel-header">
-              <div class="stats-panel-title">&#39033;&#30446;&#21015;&#34920;</div>
-              <button id="stats-compute-btn" class="compute-btn" onclick="triggerCompute()">
-                <span class="compute-btn-icon">&#10227;</span> &#31435;&#21363;&#32479;&#35745;
-              </button>
+              <div class="stats-panel-header-left">
+                <div class="stats-panel-title">&#39033;&#30446;&#21015;&#34920;</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <button id="stats-compute-btn" class="compute-btn" onclick="triggerCompute()">
+                  <span class="compute-btn-icon">&#10227;</span> &#31435;&#21363;&#32479;&#35745;
+                </button>
+                <button class="panel-toggle-btn always-show" title="&#25240;&#21472;&#38754;&#26495;" onclick="event.stopPropagation();togglePanelCollapse(this.closest('.stats-list-panel'),'stats')">&#9664;</button>
+              </div>
             </div>
             <div class="panel-search-wrap">
               <input type="text" id="stats-search" class="panel-search" placeholder="&#25628;&#32034;&#39033;&#30446;..." autocomplete="off">
@@ -1862,6 +1953,7 @@ ${NOTES_NAV_ITEM}
             <div id="stats-project-list" style="flex:1;overflow-y:auto;">
               <div class="loading"><div class="spinner"></div> &#21152;&#36733;&#20013;&#8230;</div>
             </div>
+            <div class="panel-resize-handle"></div>
           </div>
           <div class="stats-detail-panel" id="stats-detail-panel">
             <div class="empty-state">
@@ -1876,10 +1968,15 @@ ${NOTES_NAV_ITEM}
         <div id="stats-skill-panel" class="stats-sub-panel" style="display:none">
           <div class="stats-list-panel">
             <div class="stats-panel-header">
-              <div class="stats-panel-title">Skill &#25490;&#34892;</div>
-              <button id="skill-compute-btn" class="compute-btn" onclick="triggerSkillCompute()">
-                <span class="compute-btn-icon">&#10227;</span> &#31435;&#21363;&#32479;&#35745;
-              </button>
+              <div class="stats-panel-header-left">
+                <div class="stats-panel-title">Skill &#25490;&#34892;</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <button id="skill-compute-btn" class="compute-btn" onclick="triggerSkillCompute()">
+                  <span class="compute-btn-icon">&#10227;</span> &#31435;&#21363;&#32479;&#35745;
+                </button>
+                <button class="panel-toggle-btn always-show" title="&#25240;&#21472;&#38754;&#26495;" onclick="event.stopPropagation();togglePanelCollapse(this.closest('.stats-list-panel'),'stats-skills')">&#9664;</button>
+              </div>
             </div>
             <div class="panel-search-wrap">
               <input type="text" id="skill-search" class="panel-search" placeholder="&#25628;&#32034; Skill..." autocomplete="off">
@@ -1887,6 +1984,7 @@ ${NOTES_NAV_ITEM}
             <div id="skill-project-list" style="flex:1;overflow-y:auto;padding:6px 0;">
               <div class="loading"><div class="spinner"></div> &#21152;&#36733;&#20013;&#8230;</div>
             </div>
+            <div class="panel-resize-handle"></div>
           </div>
           <div class="stats-detail-panel" id="skill-detail-panel">
             <div class="empty-state">
@@ -1901,13 +1999,14 @@ ${NOTES_NAV_ITEM}
       <!-- Plans Module -->
       <div id="mod-plans" class="module">
         <div class="plans-list-panel">
-          <div class="panel-header">&#35745;&#21010;&#25991;&#20214;</div>
+          <div class="panel-header"><span class="panel-header-text">&#35745;&#21010;&#25991;&#20214;</span><button class="panel-toggle-btn" title="&#25240;&#21472;&#38754;&#26495;" onclick="event.stopPropagation();togglePanelCollapse(this.closest('.plans-list-panel'),'plans')">&#9664;</button></div>
           <div class="panel-search-wrap">
             <input type="text" id="plans-search" class="panel-search" placeholder="&#25628;&#32034;&#35745;&#21010;..." autocomplete="off">
           </div>
           <div class="panel-scroll" id="plans-list" style="flex:1;overflow-y:auto;padding:0;">
             <div class="loading"><div class="spinner"></div> &#21152;&#36733;&#20013;&#8230;</div>
           </div>
+          <div class="panel-resize-handle"></div>
         </div>
         <div class="plan-content-panel" id="plan-content-panel">
           <div class="empty-state">
@@ -2027,11 +2126,49 @@ function highlight(text, query) {
   return esc(text).replace(new RegExp(escaped, 'gi'), m => \`<mark>\${esc(m)}</mark>\`);
 }
 
+// ── Hash State ──
+const VALID_MODULES = ['overview', 'stats', 'history', 'plans', 'prompts', 'notes'];
+function parseHash() {
+  const raw = location.hash.replace(/^#/, '');
+  if (!raw) return { module: 'overview', params: {} };
+  const idx = raw.indexOf('&');
+  if (idx === -1) {
+    const m = raw.trim();
+    return { module: VALID_MODULES.includes(m) ? m : 'overview', params: {} };
+  }
+  const m = raw.slice(0, idx).trim();
+  const module = VALID_MODULES.includes(m) ? m : 'overview';
+  const params = {};
+  const pairs = raw.slice(idx + 1).split('&');
+  for (const pair of pairs) {
+    const eq = pair.indexOf('=');
+    if (eq === -1) continue;
+    const key = decodeURIComponent(pair.slice(0, eq));
+    const val = decodeURIComponent(pair.slice(eq + 1));
+    if (key) params[key] = val;
+  }
+  return { module, params };
+}
+function buildHash(module, params) {
+  const parts = [module];
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== null && v !== undefined && v !== '') {
+      parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(v));
+    }
+  }
+  return parts.length === 1 ? module : parts.join('&');
+}
+function updateHash(params) {
+  const h = '#' + buildHash(S.activeModule, params);
+  if (location.hash !== h) location.hash = h;
+}
+
 // ── Module Switch ──
 function switchModule(id, pushHash = true) {
   S.activeModule = id;
-  if (pushHash && location.hash !== '#' + id) {
-    location.hash = id;
+  if (pushHash) {
+    const h = '#' + id;
+    if (location.hash !== h) location.hash = h;
   }
   document.querySelectorAll('.nav-item[data-module]').forEach(el => {
     el.classList.toggle('active', el.dataset.module === id);
@@ -2511,6 +2648,11 @@ async function loadStats() {
     S.stats.data = await r.json();
     renderStatsProjectList();
     updateStatsTopbar();
+    // If a project was pre-selected (from hash), render its detail
+    if (S.stats.selectedProject) {
+      const project = S.stats.data.projects.find(p => p.path === S.stats.selectedProject);
+      if (project) renderStatsDetail(project);
+    }
   } catch(e) {
     el.innerHTML = '<div class="no-results">\\u52a0\\u8f7d\\u5931\\u8d25</div>';
   }
@@ -2613,6 +2755,9 @@ function selectStatsProject(path) {
   renderStatsProjectList();
   const project = S.stats.data.projects.find(p => p.path === path);
   renderStatsDetail(project);
+  const p = { tab: S.stats.activeTab };
+  if (path) p.project = path;
+  updateHash(p);
 }
 
 function renderStatsDetail(project) {
@@ -2739,6 +2884,10 @@ function switchStatTab(tab) {
     if (!S.stats.skillData) loadSkillStats();
     else { renderSkillLeaderboard(); renderSkillOverview(); }
   }
+  const p = {};
+  if (tab !== 'tokens') p.tab = tab;
+  if (S.stats.selectedProject) p.project = S.stats.selectedProject;
+  updateHash(p);
 }
 
 async function loadSkillStats() {
@@ -2750,6 +2899,11 @@ async function loadSkillStats() {
     renderSkillLeaderboard();
     renderSkillOverview();
     updateStatsTopbar();
+    // If a skill was pre-selected (from hash), render its detail
+    if (S.stats.selectedSkill) {
+      const skill = S.stats.skillData.skills.find(s => s.name === S.stats.selectedSkill);
+      if (skill) renderSkillDetail(skill);
+    }
   } catch(e) {
     el.innerHTML = '<div class="no-results">\\u52a0\\u8f7d\\u5931\\u8d25</div>';
   }
@@ -2820,6 +2974,9 @@ function selectSkill(name) {
   renderSkillLeaderboard();
   const skill = S.stats.skillData.skills.find(s => s.name === name);
   renderSkillDetail(skill);
+  const p = { tab: 'skills' };
+  if (name) p.skill = name;
+  updateHash(p);
 }
 
 function _buildTrend30(dailyCounts) {
@@ -3072,6 +3229,7 @@ function selectProject(path) {
   renderProjectList();
   renderSessions();
   renderMessages(null);
+  updateHash(path ? { project: path } : {});
 }
 
 function openClaudeMd(scope, projectPath) {
@@ -3150,6 +3308,10 @@ function selectSession(id) {
   renderSessions();
   const session = S.history.data.sessions.find(s => s.id === id);
   renderMessages(session);
+  const p = {};
+  if (S.history.selectedProject) p.project = S.history.selectedProject;
+  if (id) p.session = id;
+  updateHash(p);
 }
 
 function copyConvMsg(idx, btn) {
@@ -3471,6 +3633,11 @@ async function loadPlans() {
     S.plans.data = await r.json();
     renderPlansList();
     updatePlansStats();
+    // If a plan was pre-selected (from hash), render its content
+    if (S.plans.selectedPlan) {
+      const plan = S.plans.data.plans.find(p => p.filename === S.plans.selectedPlan);
+      if (plan) renderPlanContent(plan);
+    }
   } catch(e) {
     document.getElementById('plans-list').innerHTML = '<div class="no-results">\\u52a0\\u8f7d\\u5931\\u8d25</div>';
   }
@@ -3533,6 +3700,7 @@ function selectPlan(filename) {
   renderPlansList();
   const plan = S.plans.data.plans.find(p => p.filename === filename);
   renderPlanContent(plan);
+  updateHash(filename ? { plan: filename } : {});
 }
 
 function copyPlanSessionId(event, sid) {
@@ -3759,14 +3927,137 @@ function toggleTheme() {
   applyTheme(current === 'dark' ? 'light' : 'dark');
 }
 
+// ── Panel Resize ──
+function initPanelResize(panel, storageKey, minW, maxW) {
+  var handle = panel.querySelector('.panel-resize-handle');
+  if (!handle) return;
+  var startX, startW;
+  function onDown(e) {
+    if (panel.classList.contains('panel-collapsed')) return;
+    e.preventDefault();
+    startX = e.clientX;
+    startW = panel.offsetWidth;
+    document.body.classList.add('resizing');
+    handle.classList.add('active');
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+  function onMove(e) {
+    var delta = e.clientX - startX;
+    var newW = Math.max(minW, Math.min(maxW, startW + delta));
+    panel.style.width = newW + 'px';
+  }
+  function onUp() {
+    document.body.classList.remove('resizing');
+    handle.classList.remove('active');
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    try { localStorage.setItem('ccs-panel-' + storageKey + '-width', panel.offsetWidth); } catch(e) {}
+  }
+  handle.addEventListener('mousedown', onDown);
+
+  // Restore saved width
+  try {
+    var saved = localStorage.getItem('ccs-panel-' + storageKey + '-width');
+    if (saved) { var w = parseInt(saved, 10); if (w >= minW && w <= maxW) panel.style.width = w + 'px'; }
+  } catch(e) {}
+}
+
+// ── Panel Collapse ──
+function togglePanelCollapse(panel, storageKey) {
+  if (!panel) return;
+  var isCollapsed = panel.classList.contains('panel-collapsed');
+  if (isCollapsed) {
+    panel.classList.remove('panel-collapsed');
+    // Restore saved width or keep current
+    try {
+      var saved = localStorage.getItem('ccs-panel-' + storageKey + '-width');
+      if (saved) { var w = parseInt(saved, 10); if (w >= 60) panel.style.width = w + 'px'; }
+    } catch(e) {}
+  } else {
+    panel.classList.add('panel-collapsed');
+  }
+  try { localStorage.setItem('ccs-panel-' + storageKey + '-collapsed', isCollapsed ? '0' : '1'); } catch(e) {}
+  // Update toggle button icon
+  var btn = panel.querySelector('.panel-toggle-btn');
+  if (btn) btn.innerHTML = isCollapsed ? '&#9664;' : '&#9654;';
+}
+
+function initPanelCollapse(panel, storageKey) {
+  try {
+    var saved = localStorage.getItem('ccs-panel-' + storageKey + '-collapsed');
+    if (saved === '1') {
+      panel.classList.add('panel-collapsed');
+      var btn = panel.querySelector('.panel-toggle-btn');
+      if (btn) btn.innerHTML = '&#9654;';
+    }
+  } catch(e) {}
+}
+
 // ── Init ──
-const VALID_MODULES = ['overview', 'stats', 'history', 'plans', 'prompts', 'notes'];
 function moduleFromHash() {
-  const h = location.hash.replace(/^#/, '');
-  return VALID_MODULES.includes(h) ? h : 'overview';
+  return parseHash().module;
+}
+function restoreStateFromHash(module, params) {
+  if (module === 'history') {
+    if (params.project) {
+      S.history.selectedProject = params.project;
+      renderProjectList();
+    }
+    if (params.session) {
+      S.history.pendingSessionId = params.session;
+    }
+    // Reload history data if needed
+    if (params.project || params.session) {
+      if (!S.history.data) loadHistory();
+    }
+  } else if (module === 'stats') {
+    if (params.tab) {
+      S.stats.activeTab = params.tab;
+      // Update tab UI without triggering hash change
+      document.querySelectorAll('.stats-tab').forEach(el => {
+        el.classList.toggle('active', el.dataset.tab === params.tab);
+      });
+      const tokenPanel = document.getElementById('stats-token-panel');
+      const skillPanel = document.getElementById('stats-skill-panel');
+      if (tokenPanel) tokenPanel.style.display = params.tab === 'tokens' ? 'flex' : 'none';
+      if (skillPanel) skillPanel.style.display = params.tab === 'skills' ? 'flex' : 'none';
+    }
+    if (params.project) {
+      S.stats.selectedProject = params.project;
+    }
+    if (params.skill) {
+      S.stats.selectedSkill = params.skill;
+    }
+  } else if (module === 'plans') {
+    if (params.plan) {
+      S.plans.selectedPlan = params.plan;
+    }
+  } else if (module === 'notes') {
+    if (params.tab) {
+      window._pendingNotesTab = params.tab;
+    }
+    if (params.note) {
+      window._pendingNoteSelect = params.note;
+    }
+    if (params.link) {
+      window._pendingLinkSelect = params.link;
+    }
+    if (params.file) {
+      window._pendingFileSelect = params.file;
+    }
+  } else if (module === 'prompts') {
+    if (params.id) {
+      window._pendingPromptSelect = params.id;
+    }
+  }
 }
 window.addEventListener('hashchange', () => {
-  switchModule(moduleFromHash(), false);
+  const { module, params } = parseHash();
+  if (module !== S.activeModule) {
+    switchModule(module, false);
+    restoreStateFromHash(module, params);
+  }
 });
 window.addEventListener('load', () => {
   const saved = localStorage.getItem('cc-show-theme') || 'light';
@@ -3777,14 +4068,27 @@ window.addEventListener('load', () => {
   notesHookSwitchModule();
   promptsInit();
 
-  const initial = moduleFromHash();
-  if (initial === 'overview') {
+  // ── Panel init (collapse + resize) ──
+  initPanelCollapse(document.querySelector('.project-panel'), 'project');
+  initPanelCollapse(document.querySelector('.session-panel'), 'session');
+  initPanelCollapse(document.querySelector('.plans-list-panel'), 'plans');
+  // Stats: two stats-list-panel instances under sub-panels; init both
+  var statsPanels = document.querySelectorAll('.stats-list-panel');
+  if (statsPanels[0]) { initPanelCollapse(statsPanels[0], 'stats'); initPanelResize(statsPanels[0], 'stats', 120, 500); }
+  if (statsPanels[1]) { initPanelCollapse(statsPanels[1], 'stats-skills'); initPanelResize(statsPanels[1], 'stats-skills', 120, 500); }
+  initPanelResize(document.querySelector('.project-panel'), 'project', 120, 500);
+  initPanelResize(document.querySelector('.session-panel'), 'session', 120, 500);
+  initPanelResize(document.querySelector('.plans-list-panel'), 'plans', 120, 500);
+
+  const { module, params } = parseHash();
+  if (module === 'overview') {
     loadOverview();
   } else {
     // always pre-load overview data silently, then switch to target
     loadOverview();
-    switchModule(initial, false);
+    switchModule(module, false);
   }
+  restoreStateFromHash(module, params);
   initModeDropdown();
 
   // ── Keyboard shortcuts ──

@@ -11,6 +11,7 @@ export const PROMPTS_CSS = `
   border-right: 1px solid var(--border-sub);
   display: flex; flex-direction: column;
   flex-shrink: 0; overflow: hidden;
+  position: relative; transition: width 0.2s ease;
 }
 .prompts-search-wrap {
   position: relative; padding: 6px 8px;
@@ -184,13 +185,14 @@ export const PROMPTS_MODULE_HTML = `
       <!-- Prompts Module -->
       <div id="mod-prompts" class="module">
         <div class="prompts-list-panel">
-          <div class="panel-header">API Requests</div>
+          <div class="panel-header"><span class="panel-header-text">API Requests</span><button class="panel-toggle-btn" title="&#25240;&#21472;&#38754;&#26495;" onclick="event.stopPropagation();togglePanelCollapse(this.closest('.prompts-list-panel'),'prompts')">&#9664;</button></div>
           <div class="prompts-search-wrap">
             <input type="text" id="prompts-search" class="prompts-search" placeholder="&#25628;&#32034;&#27169;&#22411;..." autocomplete="off">
           </div>
           <div class="prompts-list" id="prompts-list">
             <div class="loading"><div class="spinner"></div> &#21152;&#36733;&#20013;&#8230;</div>
           </div>
+          <div class="panel-resize-handle"></div>
         </div>
         <div class="prompts-detail-panel">
           <div id="prompts-detail-content" class="prompts-empty">
@@ -259,6 +261,12 @@ export const PROMPTS_JS = `
         + '<div class="prompt-card-meta">msgs: ' + r.messages_count + ' | tools: ' + r.tools_count + ' | sys: ~' + sysK + 'k tokens</div>'
         + '</div>';
     }).join('');
+    // Handle pending prompt selection from URL hash
+    if (window._pendingPromptSelect) {
+      const pid = window._pendingPromptSelect;
+      window._pendingPromptSelect = null;
+      selectPrompt(pid);
+    }
   }
 
   // ── Detail loading ──
@@ -266,6 +274,7 @@ export const PROMPTS_JS = `
   window.selectPrompt = async function(id) {
     S.prompts.selectedId = id;
     renderPromptsList();
+    updateHash(id ? { id: id } : {});
     const panel = document.getElementById('prompts-detail-content');
     panel.className = '';
     panel.innerHTML = '<div class="loading" style="padding:40px;text-align:center"><div class="spinner"></div> \\u52a0\\u8f7d\\u4e2d\\u2026</div>';
@@ -543,5 +552,11 @@ function promptsInit() {
   if (!window.CCS_PROMPTS) return;
   var navEl = document.getElementById('nav-prompts');
   if (navEl) navEl.style.display = '';
+  // Panel collapse + resize
+  var panel = document.querySelector('.prompts-list-panel');
+  if (panel) {
+    if (typeof initPanelCollapse === 'function') initPanelCollapse(panel, 'prompts');
+    if (typeof initPanelResize === 'function') initPanelResize(panel, 'prompts', 120, 500);
+  }
 }
 `

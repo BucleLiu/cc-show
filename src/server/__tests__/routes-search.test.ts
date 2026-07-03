@@ -1,13 +1,22 @@
-import { describe, it, expect, beforeAll, vi } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import { randomUUID } from 'node:crypto'
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 const TMP = join(homedir(), '.claude-test-' + randomUUID())
 let routesMod: typeof import('../routes.js')
 
 beforeAll(async () => {
+  // 创建包含可见 text 块的测试文件，确保二次验证通过
+  mkdirSync(join(TMP, 'projects', '-Users-admin-foo'), { recursive: true })
+  writeFileSync(
+    join(TMP, 'projects', '-Users-admin-foo', 'all-123.jsonl'),
+    '{"type":"assistant","message":{"content":[{"type":"text","text":"hello world"}]}}',
+    'utf-8',
+  )
+
   // mock 掉 rg，避免依赖真实环境
   vi.doMock('node:child_process', () => ({
     execFile: vi.fn((_c, args, _o, cb) => {
@@ -22,6 +31,10 @@ beforeAll(async () => {
   }))
   vi.resetModules()
   routesMod = await import('../routes.js')
+})
+
+afterAll(() => {
+  rmSync(TMP, { recursive: true, force: true })
 })
 
 function request(method: string, path: string): Promise<{ status: number; body: any }> {

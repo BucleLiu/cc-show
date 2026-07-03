@@ -243,12 +243,64 @@ html, body { height: 100%; background: var(--bg-base); color: var(--text-pri); o
   width: var(--panel-w); border-right: 1px solid var(--border-sub);
   display: flex; flex-direction: column;
   background: var(--bg-surface); flex-shrink: 0; overflow: hidden;
+  position: relative; transition: width 0.2s ease;
 }
 .panel-header {
   padding: 12px 14px 8px; font-size: 10px; font-weight: 700;
   color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase;
   border-bottom: 1px solid var(--border-sub); flex-shrink: 0;
+  position: relative; display: flex; align-items: center;
 }
+.panel-header-text { flex: 1; }
+.panel-toggle-btn {
+  flex-shrink: 0; width: 18px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border: none; background: none;
+  color: var(--text-muted); font-size: 9px;
+  border-radius: 3px; opacity: 0;
+  transition: opacity 0.12s, background 0.12s;
+  padding: 0; line-height: 1;
+}
+.panel-header:hover .panel-toggle-btn,
+.panel-header .panel-toggle-btn.always-show { opacity: 1; }
+.panel-toggle-btn:hover { background: var(--bg-hover); color: var(--text-sec); }
+
+/* ── Panel collapse ── */
+.panel-collapsed {
+  width: 28px !important; min-width: 28px !important;
+}
+.panel-collapsed .panel-scroll,
+.panel-collapsed .panel-search-wrap,
+.panel-collapsed .panel-resize-handle { display: none !important; }
+.panel-collapsed .panel-header {
+  flex: 1; flex-direction: column;
+  justify-content: center; align-items: center;
+  padding: 6px 2px; border-bottom: none;
+}
+.panel-collapsed .panel-header-text { display: none; }
+.panel-collapsed .panel-toggle-btn { opacity: 1; }
+
+/* Stats panel collapsed */
+.panel-collapsed .stats-panel-header {
+  flex: 1; flex-direction: column;
+  justify-content: center; align-items: center;
+  padding: 6px 2px; border-bottom: none;
+}
+.panel-collapsed .stats-panel-header-left { display: none; }
+.panel-collapsed .stats-panel-header .panel-toggle-btn { opacity: 1; }
+
+/* ── Panel resize handle ── */
+.panel-resize-handle {
+  position: absolute; right: -2px; top: 0; bottom: 0;
+  width: 5px; cursor: col-resize; z-index: 10;
+  background: transparent; transition: background 0.12s;
+}
+.panel-resize-handle:hover,
+.panel-resize-handle.active { background: var(--accent); opacity: 0.2; }
+
+/* ── Resizing state ── */
+body.resizing,
+body.resizing * { cursor: col-resize !important; user-select: none !important; }
 .panel-scroll { flex: 1; overflow-y: auto; padding: 6px; }
 
 .project-item {
@@ -285,6 +337,7 @@ html, body { height: 100%; background: var(--bg-base); color: var(--text-pri); o
   width: var(--mid-w); border-right: 1px solid var(--border-sub);
   display: flex; flex-direction: column;
   background: var(--bg-base); flex-shrink: 0; overflow: hidden;
+  position: relative; transition: width 0.2s ease;
 }
 .session-empty {
   flex: 1; display: flex; flex-direction: column;
@@ -513,6 +566,8 @@ mark { background: rgba(251,191,36,0.2); color: var(--yellow); border-radius: 2p
   background: var(--bg-surface);
   flex-shrink: 0;
   overflow: hidden;
+  display: flex; flex-direction: column;
+  position: relative; transition: width 0.2s ease;
 }
 .plan-card {
   padding: 11px 14px;
@@ -718,11 +773,14 @@ mark { background: rgba(251,191,36,0.2); color: var(--yellow); border-radius: 2p
   width: 300px; border-right: 1px solid var(--border-sub);
   display: flex; flex-direction: column;
   background: var(--bg-surface); flex-shrink: 0; overflow: hidden;
+  position: relative; transition: width 0.2s ease;
 }
 .stats-panel-header {
   padding: 10px 14px; border-bottom: 1px solid var(--border-sub);
   display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  position: relative;
 }
+.stats-panel-header-left { display: flex; align-items: center; gap: 8px; }
 .stats-panel-title { font-size: 10px; font-weight: 700; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; }
 
 .stats-proj-item {
@@ -1020,16 +1078,17 @@ ${NOTES_NAV_ITEM}
       <!-- History Module -->
       <div id="mod-history" class="module">
         <div class="project-panel">
-          <div class="panel-header">&#39033;&#30446;</div>
+          <div class="panel-header"><span class="panel-header-text">&#39033;&#30446;</span><button class="panel-toggle-btn" title="&#25240;&#21472;&#38754;&#26495;" onclick="event.stopPropagation();togglePanelCollapse(this.closest('.project-panel'),'project')">&#9664;</button></div>
           <div class="panel-search-wrap">
             <input type="text" id="project-search" class="panel-search" placeholder="&#25628;&#32034;&#39033;&#30446;..." autocomplete="off">
           </div>
           <div class="panel-scroll" id="project-list">
             <div class="loading"><div class="spinner"></div> &#21152;&#36733;&#20013;&#8230;</div>
           </div>
+          <div class="panel-resize-handle"></div>
         </div>
         <div class="session-panel">
-          <div class="panel-header">&#20250;&#35805;</div>
+          <div class="panel-header"><span class="panel-header-text">&#20250;&#35805;</span><button class="panel-toggle-btn" title="&#25240;&#21472;&#38754;&#26495;" onclick="event.stopPropagation();togglePanelCollapse(this.closest('.session-panel'),'session')">&#9664;</button></div>
           <div class="panel-search-wrap">
             <input type="text" id="session-search" class="panel-search" placeholder="&#25628;&#32034;&#20250;&#35805;..." autocomplete="off">
           </div>
@@ -1039,6 +1098,7 @@ ${NOTES_NAV_ITEM}
               <div>&#36873;&#25321;&#19968;&#20010;&#39033;&#30446;</div>
             </div>
           </div>
+          <div class="panel-resize-handle"></div>
         </div>
         <div class="message-panel">
           <div id="message-panel-content" class="message-empty">
@@ -1053,7 +1113,10 @@ ${NOTES_NAV_ITEM}
         <div style="display:flex;flex:1;overflow:hidden;min-height:0;">
           <div class="stats-list-panel">
             <div class="stats-panel-header">
-              <div class="stats-panel-title">&#39033;&#30446;&#21015;&#34920;</div>
+              <div class="stats-panel-header-left">
+                <div class="stats-panel-title">&#39033;&#30446;&#21015;&#34920;</div>
+              </div>
+              <button class="panel-toggle-btn always-show" title="&#25240;&#21472;&#38754;&#26495;" onclick="event.stopPropagation();togglePanelCollapse(this.closest('.stats-list-panel'),'stats')">&#9664;</button>
             </div>
             <div class="panel-search-wrap">
               <input type="text" id="stats-search" class="panel-search" placeholder="&#25628;&#32034;&#39033;&#30446;..." autocomplete="off">
@@ -1061,6 +1124,7 @@ ${NOTES_NAV_ITEM}
             <div id="stats-project-list" style="flex:1;overflow-y:auto;">
               <div class="loading"><div class="spinner"></div> &#21152;&#36733;&#20013;&#8230;</div>
             </div>
+            <div class="panel-resize-handle"></div>
           </div>
           <div class="stats-detail-panel" id="stats-detail-panel">
             <div class="empty-state">
@@ -1075,13 +1139,14 @@ ${NOTES_NAV_ITEM}
       <!-- Plans Module -->
       <div id="mod-plans" class="module">
         <div class="plans-list-panel">
-          <div class="panel-header">&#35745;&#21010;&#21015;&#34920;</div>
+          <div class="panel-header"><span class="panel-header-text">&#35745;&#21010;&#21015;&#34920;</span><button class="panel-toggle-btn" title="&#25240;&#21472;&#38754;&#26495;" onclick="event.stopPropagation();togglePanelCollapse(this.closest('.plans-list-panel'),'plans')">&#9664;</button></div>
           <div class="panel-search-wrap">
             <input type="text" id="plans-search" class="panel-search" placeholder="&#25628;&#32034;&#35745;&#21010;..." autocomplete="off">
           </div>
           <div class="panel-scroll" id="plans-list" style="flex:1;overflow-y:auto;padding:0;">
             <div class="loading"><div class="spinner"></div> &#21152;&#36733;&#20013;&#8230;</div>
           </div>
+          <div class="panel-resize-handle"></div>
         </div>
         <div class="plan-content-panel" id="plan-content-panel">
           <div class="empty-state">
@@ -1177,10 +1242,50 @@ function unixMs(ts) {
   return ts && ts < 1000000000000 ? ts * 1000 : ts;
 }
 
+// ── Hash State ──
+const VALID_MODULES = ['overview', 'history', 'stats', 'plans', 'notes'];
+function parseHash() {
+  const raw = location.hash.replace(/^#/, '');
+  if (!raw) return { module: 'overview', params: {} };
+  const idx = raw.indexOf('&');
+  if (idx === -1) {
+    const m = raw.trim();
+    return { module: VALID_MODULES.includes(m) ? m : 'overview', params: {} };
+  }
+  const m = raw.slice(0, idx).trim();
+  const module = VALID_MODULES.includes(m) ? m : 'overview';
+  const params = {};
+  const pairs = raw.slice(idx + 1).split('&');
+  for (const pair of pairs) {
+    const eq = pair.indexOf('=');
+    if (eq === -1) continue;
+    const key = decodeURIComponent(pair.slice(0, eq));
+    const val = decodeURIComponent(pair.slice(eq + 1));
+    if (key) params[key] = val;
+  }
+  return { module, params };
+}
+function buildHash(module, params) {
+  const parts = [module];
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== null && v !== undefined && v !== '') {
+      parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(v));
+    }
+  }
+  return parts.length === 1 ? module : parts.join('&');
+}
+function updateHash(params) {
+  const h = '#' + buildHash(S.activeModule, params);
+  if (location.hash !== h) location.hash = h;
+}
+
 // ── Module switch ──
-function switchModule(id) {
+function switchModule(id, pushHash) {
   S.activeModule = id;
-  if (location.hash !== '#' + id) location.hash = id;
+  if (pushHash !== false) {
+    const h = '#' + id;
+    if (location.hash !== h) location.hash = h;
+  }
   document.querySelectorAll('.nav-item[data-module]').forEach(el => {
     el.classList.toggle('active', el.dataset.module === id);
   });
@@ -1205,6 +1310,18 @@ function switchModule(id) {
           const card = document.querySelector('.session-card.selected');
           if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
+      }
+      if (S.history._pendingHashSession) {
+        const sid = S.history._pendingHashSession;
+        S.history._pendingHashSession = null;
+        const session = S.history.data.sessions.find(s => s.id === sid);
+        if (session) {
+          selectSession(session.id, session.tokensUsed, session.title);
+          requestAnimationFrame(() => {
+            const card = document.querySelector('.session-card.selected');
+            if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          });
+        }
       }
     }
   } else if (id === 'stats') {
@@ -1247,6 +1364,70 @@ function toggleTheme() {
     document.getElementById('theme-tooltip').textContent = '切换浅色';
   }
 })();
+
+// ── Panel Resize ──
+function initPanelResize(panel, storageKey, minW, maxW) {
+  var handle = panel.querySelector('.panel-resize-handle');
+  if (!handle) return;
+  var startX, startW;
+  function onDown(e) {
+    if (panel.classList.contains('panel-collapsed')) return;
+    e.preventDefault();
+    startX = e.clientX;
+    startW = panel.offsetWidth;
+    document.body.classList.add('resizing');
+    handle.classList.add('active');
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+  function onMove(e) {
+    var delta = e.clientX - startX;
+    var newW = Math.max(minW, Math.min(maxW, startW + delta));
+    panel.style.width = newW + 'px';
+  }
+  function onUp() {
+    document.body.classList.remove('resizing');
+    handle.classList.remove('active');
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    try { localStorage.setItem('ccs-panel-' + storageKey + '-width', panel.offsetWidth); } catch(e) {}
+  }
+  handle.addEventListener('mousedown', onDown);
+
+  try {
+    var saved = localStorage.getItem('ccs-panel-' + storageKey + '-width');
+    if (saved) { var w = parseInt(saved, 10); if (w >= minW && w <= maxW) panel.style.width = w + 'px'; }
+  } catch(e) {}
+}
+
+// ── Panel Collapse ──
+function togglePanelCollapse(panel, storageKey) {
+  if (!panel) return;
+  var isCollapsed = panel.classList.contains('panel-collapsed');
+  if (isCollapsed) {
+    panel.classList.remove('panel-collapsed');
+    try {
+      var saved = localStorage.getItem('ccs-panel-' + storageKey + '-width');
+      if (saved) { var w = parseInt(saved, 10); if (w >= 60) panel.style.width = w + 'px'; }
+    } catch(e) {}
+  } else {
+    panel.classList.add('panel-collapsed');
+  }
+  try { localStorage.setItem('ccs-panel-' + storageKey + '-collapsed', isCollapsed ? '0' : '1'); } catch(e) {}
+  var btn = panel.querySelector('.panel-toggle-btn');
+  if (btn) btn.innerHTML = isCollapsed ? '&#9664;' : '&#9654;';
+}
+
+function initPanelCollapse(panel, storageKey) {
+  try {
+    var saved = localStorage.getItem('ccs-panel-' + storageKey + '-collapsed');
+    if (saved === '1') {
+      panel.classList.add('panel-collapsed');
+      var btn = panel.querySelector('.panel-toggle-btn');
+      if (btn) btn.innerHTML = '&#9654;';
+    }
+  } catch(e) {}
+}
 
 // ── Search listeners ──
 document.getElementById('project-search').addEventListener('input', e => {
@@ -1296,6 +1477,19 @@ async function loadHistory() {
         if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       });
     }
+    // Handle session restored from URL hash
+    if (S.history._pendingHashSession) {
+      const sid = S.history._pendingHashSession;
+      S.history._pendingHashSession = null;
+      const session = S.history.data.sessions.find(s => s.id === sid);
+      if (session) {
+        selectSession(session.id, session.tokensUsed, session.title);
+        requestAnimationFrame(() => {
+          const card = document.querySelector('.session-card.selected');
+          if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+      }
+    }
   } catch(e) {
     document.getElementById('project-list').innerHTML = '<div class="no-results">加载失败</div>';
   }
@@ -1341,6 +1535,7 @@ function selectProject(dir) {
   S.history.selectedProject = dir;
   S.history.selectedSession = null;
   renderProjectList();
+  updateHash(dir ? { project: dir } : {});
 }
 
 function renderSessionList() {
@@ -1390,6 +1585,10 @@ function selectSession(id, tokensUsed, title) {
   S.history.selectedSession = id;
   renderSessionList();
   loadConversation(id, tokensUsed, title);
+  const p = {};
+  if (S.history.selectedProject) p.project = S.history.selectedProject;
+  if (id) p.session = id;
+  updateHash(p);
 }
 
 function copySessionId(id, event) {
@@ -1587,6 +1786,11 @@ async function loadPlans() {
     S.plans.data = await r.json();
     renderPlansList();
     updatePlansTopbar();
+    // If a plan was pre-selected (from hash), render its content
+    if (S.plans.selectedPlan) {
+      const plan = S.plans.data.plans.find(function(p) { return p.id === S.plans.selectedPlan; });
+      if (plan) renderPlanContent(plan);
+    }
   } catch(e) {
     document.getElementById('plans-list').innerHTML = '<div class="no-results">\\u52a0\\u8f7d\\u5931\\u8d25</div>';
   }
@@ -1647,6 +1851,7 @@ function selectPlan(planId) {
   renderPlansList();
   var plan = S.plans.data.plans.find(function(p) { return p.id === planId; });
   renderPlanContent(plan);
+  updateHash(planId ? { plan: planId } : {});
 }
 
 function renderPlanContent(plan) {
@@ -1840,6 +2045,11 @@ async function loadStats() {
     S.stats.data = await r.json();
     updateStatsTopbar();
     renderStatsProjectList();
+    // If a project was pre-selected (from hash), render its detail
+    if (S.stats.selectedProject) {
+      const p = S.stats.data.projects.find(x => x.directory === S.stats.selectedProject);
+      if (p) renderStatsDetail(p);
+    }
   } catch(e) {
     document.getElementById('stats-project-list').innerHTML = '<div class="no-results">加载失败</div>';
   }
@@ -1885,6 +2095,7 @@ function selectStatsProject(dir) {
   renderStatsProjectList();
   const p = S.stats.data.projects.find(x => x.directory === dir);
   if (p) renderStatsDetail(p);
+  updateHash(dir ? { project: dir } : {});
 }
 
 function renderStatsDetail(p) {
@@ -2142,17 +2353,69 @@ document.addEventListener('click', () => {
 });
 
 // ── Init ──
+function moduleFromHash() {
+  return parseHash().module;
+}
+function restoreStateFromHash(module, params) {
+  if (module === 'history') {
+    if (params.project) {
+      S.history.selectedProject = params.project;
+      renderProjectList();
+    }
+    if (params.session) {
+      S.history._pendingHashSession = params.session;
+    }
+    if (params.project || params.session) {
+      if (!S.history.data) loadHistory();
+    }
+  } else if (module === 'stats') {
+    if (params.project) {
+      S.stats.selectedProject = params.project;
+    }
+  } else if (module === 'plans') {
+    if (params.plan) {
+      S.plans.selectedPlan = params.plan;
+    }
+  } else if (module === 'notes') {
+    if (params.tab) {
+      window._pendingNotesTab = params.tab;
+    }
+    if (params.note) {
+      window._pendingNoteSelect = params.note;
+    }
+    if (params.link) {
+      window._pendingLinkSelect = params.link;
+    }
+    if (params.file) {
+      window._pendingFileSelect = params.file;
+    }
+  }
+}
 (function init() {
-  const hash = location.hash.replace('#', '');
-  const valid = ['overview', 'history', 'stats', 'plans', 'notes'];
   initModeDropdown();
   // Notes init must run before switchModule so the hook is in place
   notesInit();
   notesHookSwitchModule();
-  switchModule(valid.includes(hash) ? hash : 'overview');
+
+  // ── Panel init ──
+  initPanelCollapse(document.querySelector('.project-panel'), 'project');
+  initPanelCollapse(document.querySelector('.session-panel'), 'session');
+  initPanelCollapse(document.querySelector('.stats-list-panel'), 'stats');
+  initPanelCollapse(document.querySelector('.plans-list-panel'), 'plans');
+  initPanelResize(document.querySelector('.project-panel'), 'project', 120, 500);
+  initPanelResize(document.querySelector('.session-panel'), 'session', 120, 500);
+  initPanelResize(document.querySelector('.stats-list-panel'), 'stats', 120, 500);
+  initPanelResize(document.querySelector('.plans-list-panel'), 'plans', 120, 500);
+
+  const { module, params } = parseHash();
+  switchModule(module, false);
+  restoreStateFromHash(module, params);
   window.addEventListener('hashchange', () => {
-    const h = location.hash.replace('#', '');
-    if (valid.includes(h) && h !== S.activeModule) switchModule(h);
+    const { module: m, params: p } = parseHash();
+    if (m !== S.activeModule) {
+      switchModule(m, false);
+      restoreStateFromHash(m, p);
+    }
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && S.history.fullscreen) {

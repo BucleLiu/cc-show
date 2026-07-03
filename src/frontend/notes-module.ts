@@ -18,13 +18,27 @@ export const NOTES_CSS = `
   border-right: 1px solid var(--border-sub);
   display: flex; flex-direction: column;
   flex-shrink: 0; overflow: hidden;
+  position: relative; transition: width 0.2s ease;
 }
 .notes-list-header {
   display: flex; align-items: center; gap: 6px;
   padding: 8px 10px 6px;
   border-bottom: 1px solid var(--border-sub);
   flex-shrink: 0;
+  position: relative;
 }
+
+/* Notes panel collapsed */
+.notes-list-panel.panel-collapsed .notes-list-header {
+  flex: 1; flex-direction: column;
+  justify-content: center; align-items: center;
+  padding: 6px 2px; border-bottom: none;
+}
+.notes-list-panel.panel-collapsed .notes-new-btn,
+.notes-list-panel.panel-collapsed .notes-import-btn,
+.notes-list-panel.panel-collapsed .notes-tabs,
+.notes-list-panel.panel-collapsed .notes-search-wrap,
+.notes-list-panel.panel-collapsed .notes-list-scroll { display: none; }
 .notes-new-btn, .notes-import-btn {
   flex: 1; height: 28px; border-radius: 7px; border: 1px solid var(--border-muted);
   background: var(--bg-elevated); color: var(--text-sec);
@@ -389,27 +403,38 @@ export const NOTES_CSS = `
 
 /* ── Note links (引用) ── */
 .note-link-item { border-bottom: 1px solid var(--border, rgba(255,255,255,.05)); }
-.note-link-item.expanded { background: var(--bg-elevated, rgba(255,255,255,.03)); }
 .note-link-row { display: flex; align-items: center; gap: 6px; padding: 8px 12px; cursor: pointer; position: relative; }
 .note-link-row:hover { background: var(--bg-elevated, rgba(255,255,255,.05)); }
+.note-link-row.active { background: var(--accent-dim); box-shadow: inset 3px 0 0 var(--accent); }
+.note-link-row.active .note-link-label { color: var(--accent); font-weight: 600; }
 .note-link-row:hover .note-delete-btn { display: flex; }
 .note-link-arrow { width: 12px; font-size: .7rem; color: var(--text-muted, #888); }
 .note-link-icon { font-size: .9rem; }
 .note-link-label { flex: 1; font-size: .88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note-link-tree { padding: 2px 0 6px; }
-.note-tree-folder { font-size: .8rem; color: var(--text-sec, #aaa); padding: 4px 0; cursor: pointer; user-select: none; border-radius: 4px; display: flex; align-items: center; gap: 4px; }
+.note-tree-folder { font-size: .8rem; color: var(--text-sec, #aaa); padding: 4px 0; cursor: pointer; user-select: none; border-radius: 4px; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note-tree-folder:hover { background: var(--bg-elevated, rgba(255,255,255,.05)); color: var(--text-pri); }
-.note-tree-arrow { display: inline-block; width: 10px; text-align: center; color: var(--text-muted, #888); font-size: .7rem; }
-.note-tree-file { font-size: .82rem; padding: 4px 12px; cursor: pointer; border-radius: 4px; }
+.note-tree-arrow { display: inline-block; width: 10px; text-align: center; color: var(--text-muted, #888); font-size: .7rem; flex-shrink: 0; }
+.note-tree-file { font-size: .82rem; padding: 4px 12px; cursor: pointer; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note-tree-file:hover { background: var(--bg-elevated, rgba(255,255,255,.06)); }
+.note-tree-file.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
 .note-link-loading, .note-link-error, .note-link-truncated { font-size: .75rem; color: var(--text-muted, #888); padding: 4px 12px; }
 .note-link-error { color: var(--danger, #e57373); }
 .notes-link-type-row { display: flex; gap: 16px; margin: 6px 0 12px; }
 .notes-link-type-opt { font-size: .85rem; cursor: pointer; }
 .notes-link-hint { font-size: .75rem; color: var(--text-muted, #888); margin: 8px 0; line-height: 1.5; }
 .notes-title-input.readonly { background: transparent; cursor: default; }
-.note-reveal-btn { font-size: .75rem; color: var(--accent, #4a9eff); cursor: pointer; margin-left: auto; }
-`
+	.note-reveal-btn { font-size: .75rem; color: var(--accent, #4a9eff); cursor: pointer; margin-left: auto; }
+	.note-backup-btn {
+	  font-size: 11px; font-weight: 600; padding: 3px 10px;
+	  border-radius: 6px; border: 1px solid var(--border-muted);
+	  background: var(--bg-elevated); color: var(--text-sec);
+	  cursor: pointer; transition: all 0.12s; white-space: nowrap;
+	  flex-shrink: 0;
+	}
+	.note-backup-btn:hover { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+	.note-backup-btn.backed { color: var(--green); border-color: var(--green); background: rgba(34,197,94,0.08); cursor: default; }
+	`
 
 // ── 4.3  Nav item HTML ─────────────────────────────────────────────────────────
 
@@ -430,6 +455,7 @@ export const NOTES_MODULE_HTML = `
           <div class="notes-list-header">
             <button class="notes-new-btn" onclick="notesNewNote()">&#43; &#26032;&#24314;</button>
             <button class="notes-import-btn" onclick="notesOpenImport()">&#8593; &#23548;&#20837;</button>
+            <button class="panel-toggle-btn always-show" title="&#25240;&#21472;&#38754;&#26495;" onclick="event.stopPropagation();togglePanelCollapse(this.closest('.notes-list-panel'),'notes')" style="flex:0;">&#9664;</button>
           </div>
           <div class="notes-tabs">
             <button class="notes-tab" id="notes-tab-local" onclick="notesSwitchTab(&#39;local&#39;)"><span>&#26412;&#22320;&#31508;&#35760;</span><span class="notes-tab-count" id="notes-tab-local-count">0</span></button>
@@ -444,6 +470,7 @@ export const NOTES_MODULE_HTML = `
               <div>&#26082;&#26080;&#31508;&#35760;</div>
             </div>
           </div>
+          <div class="panel-resize-handle"></div>
         </div>
 
         <!-- Editor panel -->
@@ -454,7 +481,10 @@ export const NOTES_MODULE_HTML = `
           </div>
           <div class="notes-editor-inner" id="notes-editor-inner" style="display:none;flex-direction:column;flex:1;overflow:hidden">
             <div class="notes-title-bar">
-              <input type="text" id="notes-title-input" class="notes-title-input" placeholder="&#31508;&#35760;&#26631;&#39064;" oninput="notesOnTitleChange(this.value)">
+              <div style="display:flex; align-items:center; gap:8px">
+                <input type="text" id="notes-title-input" class="notes-title-input" placeholder="&#31508;&#35760;&#26631;&#39064;" oninput="notesOnTitleChange(this.value)" style="flex:1; margin-bottom:0">
+                <button class="note-backup-btn" id="note-backup-btn" onclick="notesBackupLink()" style="display:none">&#128190; &#22791;&#20221;</button>
+              </div>
               <div class="notes-tags-row" id="notes-tags-row">
                 <button class="note-add-tag-btn" id="notes-add-tag-btn" onclick="notesShowTagInput()">&#43; &#26631;&#31614;</button>
               </div>
@@ -560,11 +590,23 @@ function notesInit() {
   if (!window.CCS_NOTE) return;
   var navEl = document.getElementById('nav-notes');
   if (navEl) navEl.style.display = '';
-  notesRestoreTab();
+  // Hash state takes priority over localStorage for tab
+  if (window._pendingNotesTab) {
+    var pendingTab = window._pendingNotesTab;
+    if (pendingTab === 'local' || pendingTab === 'links') _activeTab = pendingTab;
+  } else {
+    notesRestoreTab();
+  }
   // Esc to close import modal
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') notesCloseImport();
   });
+  // Panel collapse + resize
+  var panel = document.querySelector('.notes-list-panel');
+  if (panel) {
+    if (typeof initPanelCollapse === 'function') initPanelCollapse(panel, 'notes');
+    if (typeof initPanelResize === 'function') initPanelResize(panel, 'notes', 120, 500);
+  }
 }
 
 // ── 4.7  Load list ───────────────────────────────────────────────────────────
@@ -634,6 +676,32 @@ function notesRenderList() {
   }
 
   el.innerHTML = html;
+  // Handle pending state from URL hash
+  if (window._pendingNotesTab) {
+    var pendingTab = window._pendingNotesTab;
+    window._pendingNotesTab = null;
+    if (pendingTab === 'links' || pendingTab === 'local') notesSwitchTab(pendingTab);
+  }
+  if (window._pendingNoteSelect) {
+    var pendingNote = window._pendingNoteSelect;
+    window._pendingNoteSelect = null;
+    // Ensure we're on the local tab and the note exists
+    if (_activeTab !== 'local') notesSwitchTab('local');
+    notesSelectNote(pendingNote);
+  }
+  if (window._pendingLinkSelect) {
+    var pendingLink = window._pendingLinkSelect;
+    window._pendingLinkSelect = null;
+    // Ensure we're on the links tab
+    if (_activeTab !== 'links') notesSwitchTab('links');
+    notesOpenLinkFile(pendingLink);
+  }
+  if (window._pendingFileSelect) {
+    var pendingFile = window._pendingFileSelect;
+    window._pendingFileSelect = null;
+    if (_activeTab !== 'links') notesSwitchTab('links');
+    notesOpenLinkFileByPath(pendingFile);
+  }
 }
 
 function notesUpdateTabs(localCount, linkCount) {
@@ -652,6 +720,7 @@ function notesSwitchTab(tab) {
   _activeTab = tab;
   try { localStorage.setItem('notes-active-tab', tab); } catch (e) {}
   notesRenderList();
+  updateHash(tab !== 'local' ? { tab: tab } : {});
 }
 
 function notesRestoreTab() {
@@ -665,8 +734,9 @@ function notesRenderLinkItem(l) {
   var icon = l.type === 'folder' ? '&#128193;' : '&#128196;';
   var expanded = _expandedLinkFolders[l.id];
   var arrow = l.type === 'folder' ? (expanded ? '▾' : '▸') : '';
+  var active = _activeLinkFile && _activeLinkFile.linkId === l.id;
   var html = '<div class="note-link-item' + (expanded ? ' expanded' : '') + '" id="note-link-' + escHtml(l.id) + '">'
-    + '<div class="note-link-row" onclick="notesLinkClick(event,' + escHtml(JSON.stringify(l.id)) + ')">'
+    + '<div class="note-link-row' + (active ? ' active' : '') + '" onclick="notesLinkClick(event,' + escHtml(JSON.stringify(l.id)) + ')">'
     + '<span class="note-link-arrow">' + arrow + '</span>'
     + '<span class="note-link-icon">' + icon + '</span>'
     + '<span class="note-link-label">' + escHtml(l.label) + '</span>'
@@ -699,7 +769,11 @@ function notesLinkClick(e, linkId) {
       notesLoadLinkTree(linkId);
     }
   } else {
-    // file：直接预览
+    // file：直接预览 — 先立即标为选中，再异步加载内容
+    _activeId = null;
+    _activeLinkFile = { linkId: linkId, path: '', title: link.label };
+    notesRenderList();
+    updateHash({ link: linkId });
     notesOpenLinkFile(linkId);
   }
 }
@@ -725,6 +799,7 @@ function notesLoadLinkTree(linkId) {
 }
 
 function notesRenderTreeNodes(nodes, depth, linkId) {
+  var activePath = _activeLinkFile ? _activeLinkFile.path : null;
   var html = '';
   nodes.forEach(function(n) {
     var pad = 'padding-left:' + (12 + depth * 14) + 'px;';
@@ -735,7 +810,8 @@ function notesRenderTreeNodes(nodes, depth, linkId) {
       // 逐级展开：仅在该文件夹已展开时渲染子节点
       if (open && n.children) html += notesRenderTreeNodes(n.children, depth + 1, linkId);
     } else {
-      html += '<div class="note-tree-file" style="' + pad + '" onclick="notesOpenLinkFileByPath(' + escHtml(JSON.stringify(n.path)) + ')">&#128196; ' + escHtml(n.name) + '</div>';
+      var fileActive = activePath && n.path === activePath;
+      html += '<div class="note-tree-file' + (fileActive ? ' active' : '') + '" style="' + pad + '" onclick="notesOpenLinkFileByPath(' + escHtml(JSON.stringify(n.path)) + ')">&#128196; ' + escHtml(n.name) + '</div>';
     }
   });
   return html;
@@ -784,7 +860,21 @@ function notesOpenLinkFile(linkId) {
 }
 
 function notesOpenLinkFileByPath(mdPath) {
-  // 树内文件：按路径读（不持久化）
+  // 树内文件：立即标记所属引用链接为选中，再异步加载内容
+  var activeLinkId = null;
+  if (_noteLinks) {
+    var best = null;
+    _noteLinks.forEach(function(l) {
+      if (l.path && mdPath.indexOf(l.path) === 0) {
+        if (!best || l.path.length > best.path.length) best = l;
+      }
+    });
+    if (best) activeLinkId = best.id;
+  }
+  _activeId = null;
+  _activeLinkFile = { linkId: activeLinkId, path: mdPath, title: '' };
+  notesRenderList();
+  // 按路径读（不持久化）
   fetch('/api/notes/links/read', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -804,8 +894,20 @@ function notesShowLinkError(msg) {
 
 function notesShowLinkPreview(title, path, content, linkId) {
   _activeId = null;          // 与本地笔记互斥
-  _activeLinkFile = { linkId: linkId, path: path, title: title };
+  // 树内文件没有 linkId，尝试找到所属的引用链接
+  var activeLinkId = linkId;
+  if (!activeLinkId && path && _noteLinks) {
+    var best = null;
+    _noteLinks.forEach(function(l) {
+      if (l.path && path.indexOf(l.path) === 0) {
+        if (!best || l.path.length > best.path.length) best = l;
+      }
+    });
+    if (best) activeLinkId = best.id;
+  }
+  _activeLinkFile = { linkId: activeLinkId, path: path, title: title };
   notesRenderList();
+  updateHash(linkId ? { link: linkId } : { file: path });
   // 切到只读预览形态
   document.getElementById('notes-editor-empty').style.display = 'none';
   var inner = document.getElementById('notes-editor-inner');
@@ -828,7 +930,7 @@ function notesShowLinkPreview(title, path, content, linkId) {
   var pathText = document.getElementById('note-path-text');
   if (pathText) pathText.textContent = path;
   var pathRow = document.getElementById('note-path-row');
-  if (pathRow) { pathRow.title = path; pathRow.removeAttribute('onclick'); }
+  if (pathRow) { pathRow.title = path; pathRow.setAttribute('onclick', 'notesCopyPath()'); }
   // 状态栏：只读标记 + 在 Finder 显示
   notesSetSaveStatus('saved');
   var status = document.getElementById('notes-save-status');
@@ -841,6 +943,9 @@ function notesShowLinkPreview(title, path, content, linkId) {
   // 显示「在 Finder 中显示」按钮（仅 file 引用有 linkId）
   var rb = document.getElementById('note-reveal-btn');
   if (rb) rb.style.display = linkId ? '' : 'none';
+  // 显示备份按钮
+  var bb = document.getElementById('note-backup-btn');
+  if (bb) { bb.style.display = ''; bb.classList.remove('backed'); bb.textContent = '\ud83d\udcbe \u5907\u4efd'; }
 }
 
 function notesLinkDeleteClick(e, linkId) {
@@ -890,6 +995,36 @@ function notesCloseLinkPreview() {
   document.getElementById('notes-editor-inner').style.display = 'none';
   var rb = document.getElementById('note-reveal-btn');
   if (rb) rb.style.display = 'none';
+  var bb = document.getElementById('note-backup-btn');
+  if (bb) bb.style.display = 'none';
+  updateHash({});
+}
+
+function notesBackupLink() {
+  // 备份当前引用的文件到本地笔记
+  var path = '';
+  var pathText = document.getElementById('note-path-text');
+  if (pathText) path = pathText.textContent || '';
+  if (!path) return;
+  var btn = document.getElementById('note-backup-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '备份中...'; }
+  fetch('/api/notes/links/backup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: path })
+  }).then(function(r) {
+    if (r.ok) {
+      if (btn) { btn.classList.add('backed'); btn.textContent = '\u2713 \u5df2\u5907\u4efd'; btn.disabled = false; }
+      // 刷新本地笔记列表（后台静默）
+      loadNotesList();
+    } else {
+      if (btn) { btn.textContent = '备份失败'; btn.disabled = false; }
+      setTimeout(function() { if (btn) { btn.textContent = '\ud83d\udcbE \u5907\u4efd'; } }, 2000);
+    }
+  }).catch(function() {
+    if (btn) { btn.textContent = '备份失败'; btn.disabled = false; }
+    setTimeout(function() { if (btn) { btn.textContent = '\ud83d\udcbE \u5907\u4efd'; } }, 2000);
+  });
 }
 
 function notesRevealLink() {
@@ -913,7 +1048,9 @@ function notesSelectNote(id) {
   var status = document.getElementById('notes-save-status');
   if (status) status.innerHTML = '&#10003; 已保存';
   var rb = document.getElementById('note-reveal-btn'); if (rb) rb.style.display = 'none';
+  var bb = document.getElementById('note-backup-btn'); if (bb) bb.style.display = 'none';
   notesRenderList();
+  updateHash(id ? { note: id } : {});
   document.getElementById('notes-editor-empty').style.display = 'none';
   document.getElementById('notes-editor-inner').style.display = 'flex';
   notesBindScrollSync();
@@ -1216,6 +1353,7 @@ function notesDeleteConfirm(e, id) {
       _activeId = null;
       document.getElementById('notes-editor-empty').style.display = '';
       document.getElementById('notes-editor-inner').style.display = 'none';
+      updateHash({});
     }
     notesRenderList();
   });

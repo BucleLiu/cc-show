@@ -661,6 +661,41 @@ export async function handleRequest(
         return
       }
 
+      // POST /api/notes/links/backup — backup referenced file to local notes
+      if (path === '/api/notes/links/backup') {
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          try {
+            const input = JSON.parse(body) as { path?: string }
+            if (!input.path) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'path is required' }))
+              return
+            }
+            const md = readMdByPath(input.path)
+            const note = createNote({ title: md.title, content: md.content })
+            const bodyBuf = Buffer.from(JSON.stringify(note), 'utf-8')
+            res.writeHead(201, {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Content-Length': bodyBuf.length,
+            })
+            res.end(bodyBuf)
+          } catch (err) {
+            if (err instanceof NoteLinkError) {
+              const code = err.code
+              const status = code === 'NOT_FOUND' ? 404 : 400
+              res.writeHead(status, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: err.message }))
+              return
+            }
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: String(err) }))
+          }
+        })
+        return
+      }
+
       // POST /api/notes/links/read — read md by path (no persistence), for tree file preview
       if (path === '/api/notes/links/read') {
         let body = ''
