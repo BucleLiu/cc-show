@@ -11,9 +11,18 @@ try {
   markedMinJs = 'window.marked={parse:function(s){return s;}};'
 }
 
+// __CODEMIRROR_MIN_JS__ 同理
+let codemirrorJs = ''
+try {
+  codemirrorJs = readFileSync(join(__dirname, 'src/frontend/vendor/codemirror.bundle.js'), 'utf-8')
+} catch {
+  codemirrorJs = 'window.CodeMirrorSetup={};'
+}
+
 export default defineConfig({
   define: {
     __MARKED_MIN_JS__: JSON.stringify(markedMinJs),
+    __CODEMIRROR_MIN_JS__: JSON.stringify(codemirrorJs),
     __PACKAGE_VERSION__: JSON.stringify('0.0.0-test'),
   },
   test: {

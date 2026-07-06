@@ -17,7 +17,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "build:cm": "esbuild src/frontend/vendor/codemirror-entry.js --bundle --format=iife --outfile=src/frontend/vendor/codemirror.bundle.js --minify",
+    "build": "npm run build:cm && tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -26,6 +27,14 @@
     "prepublishOnly": "npm run build && npm run typecheck"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.10.4",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/lint": "^6.9.7",
+    "@codemirror/state": "^6.7.0",
+    "@codemirror/theme-one-dark": "^6.1.3",
+    "@codemirror/view": "^6.43.4",
+    "@lezer/highlight": "^1.2.3",
     "commander": "^12.1.0",
     "marked": "^14.0.0",
     "picocolors": "^1.1.1"

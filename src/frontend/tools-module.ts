@@ -1,3 +1,8 @@
+// ── 0. CodeMirror bundle (build-time injected by tsup define) ─────────────────
+
+declare const __CODEMIRROR_MIN_JS__: string
+export const CODEMIRROR_BUNDLE: string = __CODEMIRROR_MIN_JS__
+
 // ── 1. CSS ────────────────────────────────────────────────────────────────────
 
 export const TOOLS_CSS = `
@@ -113,58 +118,61 @@ export const TOOLS_CSS = `
 .tools-btn-success:hover { background: rgba(22,163,74,0.1); color: var(--green); border-color: var(--green); }
 .tools-toolbar-spacer { flex: 1; }
 
-/* Line numbers */
-.tools-line-row { display: block; }
-.tools-line-num {
-  display: inline-block;
-  min-width: 2.5em;
-  text-align: right;
-  padding-right: 1em;
-  color: var(--text-muted);
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-/* Editor area — overlay textarea + highlighted backdrop */
-.tools-editor-wrap { flex: 1; overflow: hidden; position: relative; }
-.tools-editor-backdrop {
-  position: absolute; inset: 0;
+/* CodeMirror editor container */
+.tools-cm-wrap { flex: 1; overflow: hidden; }
+.tools-cm-wrap .cm-editor { height: 100%; outline: none; }
+.tools-cm-wrap .cm-editor .cm-scroller {
   overflow: auto;
-  pointer-events: none;
-}
-.tools-editor-highlight {
-  margin: 0; padding: 16px 20px;
   font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
-  font-size: 13px; line-height: 1.7; tab-size: 2;
-  white-space: pre-wrap; word-wrap: break-word;
+  font-size: 13px; line-height: 1.7;
+}
+.tools-cm-wrap .cm-editor .cm-content {
+  padding: 12px 0;
+}
+.tools-cm-wrap .cm-editor .cm-gutters {
+  border-right: 1px solid var(--border-sub);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  border: none;
+}
+.tools-cm-wrap .cm-editor .cm-activeLineGutter {
+  background: var(--bg-hover);
+}
+.tools-cm-wrap .cm-editor .cm-activeLine {
+  background: var(--bg-hover);
+}
+.tools-cm-wrap .cm-editor .cm-foldPlaceholder {
+  background: var(--bg-elevated);
+  border-color: var(--border-muted);
+  color: var(--text-muted);
+}
+.tools-cm-wrap .cm-editor .cm-tooltip {
+  background: var(--bg-surface);
+  border-color: var(--border-muted);
   color: var(--text-pri);
-  min-height: 100%;
 }
-.tools-editor-highlight code {
-  font-family: inherit; font-size: inherit;
+.tools-cm-wrap .cm-editor .cm-tooltip-autocomplete {
+  background: var(--bg-surface);
+  border-color: var(--border-muted);
 }
-.tools-editor {
-  position: relative; z-index: 1;
-  width: 100%; height: 100%; padding: 16px 20px 16px calc(20px + 3.5em);
-  background: transparent; color: transparent;
-  caret-color: var(--text-pri);
-  border: none; outline: none; resize: none;
-  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
-  font-size: 13px; line-height: 1.7; tab-size: 2;
+.tools-cm-wrap .cm-editor .cm-tooltip-autocomplete > ul > li[aria-selected] {
+  background: var(--accent-dim);
+  color: var(--text-pri);
 }
-.tools-editor::placeholder { color: var(--text-muted); }
-.tools-editor-error {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  padding: 8px 16px; font-size: 11px;
-  background: rgba(220,38,38,0.08);
-  color: #dc2626; border-top: 1px solid rgba(220,38,38,0.2);
+/* Lint (error diagnostics) */
+.tools-cm-wrap .cm-editor .cm-lintRange-error {
+  background-image: none;
+  border-bottom: 2px wavy #dc2626;
 }
-
-/* JSON syntax highlight tokens */
-.json-key { color: var(--purple); }
-.json-string { color: var(--green); }
-.json-number { color: var(--amber); }
-.json-keyword { color: var(--accent); }
+.tools-cm-wrap .cm-editor .cm-lint-marker-error {
+  color: #dc2626;
+  cursor: pointer;
+}
+.tools-cm-wrap .cm-editor .cm-lintRange-error:hover {
+  text-decoration: underline;
+  text-decoration-color: #dc2626;
+  text-decoration-style: wavy;
+}
 
 /* Saved list */
 .tools-saved-list { flex: 1; overflow-y: auto; padding: 4px; }
@@ -293,6 +301,8 @@ export const TOOLS_JS = `
 
   var ICON_TRASH = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
 
+  var ICON_OPEN = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
+
   // ── Tool registry (extensible — add entries here for new tools) ──
   var TOOLS = [
     {
@@ -324,6 +334,29 @@ export const TOOLS_JS = `
     if (panel) {
       if (typeof initPanelCollapse === 'function') initPanelCollapse(panel, 'tools');
       if (typeof initPanelResize === 'function') initPanelResize(panel, 'tools', 120, 500);
+    }
+    // Hook theme toggle to sync CodeMirror theme
+    toolsHookTheme();
+  }
+
+  // ── Theme sync for CodeMirror ──
+  var _toolsThemeHooked = false;
+  function toolsHookTheme() {
+    if (_toolsThemeHooked) return;
+    _toolsThemeHooked = true;
+    if (typeof window.applyTheme === 'function') {
+      var orig = window.applyTheme;
+      window.applyTheme = function(theme) {
+        orig(theme);
+        if (_cmView && _cmThemeComp) {
+          var S = cmGetSetup();
+          var isDark = theme === 'dark';
+          var ext = isDark && S.oneDark ? S.oneDark : [];
+          _cmView.dispatch({
+            effects: _cmThemeComp.reconfigure(ext),
+          });
+        }
+      };
     }
   }
 
@@ -372,6 +405,7 @@ export const TOOLS_JS = `
 
     if (toolId === 'json-format') {
       renderJsonFormatWorkarea(innerEl);
+      initCodeMirror();
     }
     if (!silent) updateHash({ tool: toolId });
   };
@@ -379,8 +413,6 @@ export const TOOLS_JS = `
   // ═══════════════════════════════════════════════════════════════════════
   // JSON Formatter
   // ═══════════════════════════════════════════════════════════════════════
-
-  var _jsonFmtDebounce = null;
 
   function renderJsonFormatWorkarea(container) {
     container.innerHTML = ''
@@ -394,20 +426,81 @@ export const TOOLS_JS = `
       + '<button class="tools-btn primary" onclick="toolsFormatJson()">' + ICON_CHECK + ' 格式化</button>'
       + '<button class="tools-btn" onclick="toolsCompressJson()">' + ICON_COMPRESS + ' 压缩</button>'
       + '<button class="tools-btn" onclick="toolsCopyJson()">' + ICON_COPY + ' 复制</button>'
+      + '<button class="tools-btn" onclick="toolsOpenFile()">' + ICON_OPEN + ' 打开</button>'
       + '<span class="tools-toolbar-spacer"></span>'
       + '<button class="tools-btn danger" onclick="toolsClearJson()" title="清空">' + ICON_TRASH + ' 清空</button>'
       + '<button class="tools-btn tools-btn-success" onclick="toolsSaveJson()">' + ICON_SAVE + ' 保存</button>'
       + '</div>'
-      // Editor
-      + '<div class="tools-editor-wrap" id="tools-editor-wrap">'
-      + '<div class="tools-editor-backdrop" id="tools-editor-backdrop"><pre class="tools-editor-highlight"><code id="tools-editor-code"></code></pre></div>'
-      + '<textarea id="tools-editor" class="tools-editor" placeholder="粘贴或输入 JSON..." spellcheck="false" oninput="toolsOnEditorInput()" onscroll="toolsSyncScroll()"></textarea>'
-      + '<div id="tools-editor-error" class="tools-editor-error" style="display:none"></div>'
-      + '</div>'
+      // Hidden file input for opening local files
+      + '<input type="file" id="tools-file-input" accept=".json,.jsonc,.txt" style="display:none" onchange="toolsHandleFileOpen(event)" />'
+      // CodeMirror editor container
+      + '<div class="tools-cm-wrap" id="tools-cm-wrap"></div>'
       // Saved list (hidden by default)
       + '<div class="tools-saved-list" id="tools-saved-list" style="display:none">'
       + '<div class="tools-saved-empty"><div>' + ICON_FOLDER + '</div><div>加载中...</div></div>'
       + '</div>';
+  }
+
+  // ── CodeMirror ──
+  var _cmView = null;
+  var _cmThemeComp = null;
+
+  function cmGetSetup() {
+    return window.CodeMirrorSetup || {};
+  }
+
+  function cmThemeExtension() {
+    var S = cmGetSetup();
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark && S.oneDark) return S.oneDark;
+    return [];
+  }
+
+  function initCodeMirror() {
+    var S = cmGetSetup();
+    if (!S.EditorView) return;
+    var container = document.getElementById('tools-cm-wrap');
+    if (!container) return;
+
+    if (_cmView) {
+      // Already initialized — request a remeasure (handles display:none → display:'' transition)
+      _cmView.requestMeasure();
+      return _cmView;
+    }
+
+    _cmThemeComp = S.Compartment ? new S.Compartment : { of: function() { return []; } };
+
+    _cmView = new S.EditorView({
+      doc: '',
+      extensions: [
+        S.lineNumbers ? S.lineNumbers() : null,
+        S.foldGutter ? S.foldGutter() : null,
+        S.highlightActiveLine ? S.highlightActiveLine() : null,
+        S.history ? S.history() : null,
+        S.json ? S.json() : null,
+        S.linter && S.jsonParseLinter ? S.linter(S.jsonParseLinter()) : null,
+        S.syntaxHighlighting ? S.syntaxHighlighting(S.defaultHighlightStyle) : null,
+        S.keymap ? S.keymap.of([
+          (S.defaultKeymap || []),
+          (S.historyKeymap || []),
+          (S.foldKeymap || []),
+        ].flat()) : null,
+        _cmThemeComp.of(cmThemeExtension()),
+      ].filter(Boolean),
+      parent: container,
+    });
+    return _cmView;
+  }
+
+  function cmGetDoc() {
+    return _cmView ? _cmView.state.doc.toString() : '';
+  }
+
+  function cmSetDoc(text) {
+    if (!_cmView) return;
+    _cmView.dispatch({
+      changes: { from: 0, to: _cmView.state.doc.length, insert: text },
+    });
   }
 
   // ── Subtab ──
@@ -417,195 +510,104 @@ export const TOOLS_JS = `
       el.classList.toggle('active', el.id === 'tools-subtab-' + tab);
     });
     var toolbar = document.getElementById('tools-toolbar');
-    var editorWrap = document.getElementById('tools-editor-wrap');
+    var cmWrap = document.getElementById('tools-cm-wrap');
     var savedList = document.getElementById('tools-saved-list');
     if (tab === 'edit') {
       if (toolbar) toolbar.style.display = '';
-      if (editorWrap) editorWrap.style.display = '';
+      if (cmWrap) cmWrap.style.display = '';
       if (savedList) savedList.style.display = 'none';
+      initCodeMirror();
     } else {
       if (toolbar) toolbar.style.display = 'none';
-      if (editorWrap) editorWrap.style.display = 'none';
+      if (cmWrap) cmWrap.style.display = 'none';
       if (savedList) savedList.style.display = '';
       toolsLoadSavedList();
     }
   };
 
   // ── JSON Format ──
-  window.toolsOnEditorInput = function() {
-    if (_jsonFmtDebounce) clearTimeout(_jsonFmtDebounce);
-    _jsonFmtDebounce = setTimeout(function() { toolsFormatJson(true); }, 300);
-  };
+  function cmErrPos(err, text) {
+    var pos = 0;
+    var m = err.message.match(/position (\\d+)/);
+    if (m) pos = parseInt(m[1], 10);
+    var line = 1, col = 1;
+    for (var i = 0; i < pos && i < text.length; i++) {
+      if (text.charCodeAt(i) === 10) { line++; col = 1; }
+      else { col++; }
+    }
+    return '第 ' + line + ' 行, 第 ' + col + ' 列';
+  }
 
   window.toolsFormatJson = function(silent) {
-    var editor = document.getElementById('tools-editor');
-    var errorEl = document.getElementById('tools-editor-error');
-    if (!editor) return;
-    var val = editor.value.trim();
-    if (!val) {
-      if (errorEl) errorEl.style.display = 'none';
-      toolsUpdateHighlight('');
-      return;
-    }
+    var val = cmGetDoc().trim();
+    if (!val) return;
     try {
       var obj = JSON.parse(val);
       var formatted = JSON.stringify(obj, null, 2);
-      if (editor.value !== formatted) {
-        editor.value = formatted;
+      if (cmGetDoc() !== formatted) {
+        cmSetDoc(formatted);
       }
-      if (errorEl) errorEl.style.display = 'none';
-      toolsUpdateHighlight(formatted);
       S.tools.saveDirty = true;
     } catch (e) {
-      if (errorEl) {
-        errorEl.textContent = 'JSON 解析失败: ' + e.message;
-        errorEl.style.display = '';
-      }
-      toolsUpdateHighlight(val);
+      toolsShowToast('JSON 无效 — ' + cmErrPos(e, val) + ': ' + e.message.replace(/ in JSON at position \\d+/, ''));
     }
   };
 
   window.toolsCompressJson = function() {
-    var editor = document.getElementById('tools-editor');
-    var errorEl = document.getElementById('tools-editor-error');
-    if (!editor) return;
-    var val = editor.value.trim();
+    var val = cmGetDoc().trim();
     if (!val) return;
     try {
       var obj = JSON.parse(val);
-      var compressed = JSON.stringify(obj);
-      editor.value = compressed;
-      if (errorEl) errorEl.style.display = 'none';
-      toolsUpdateHighlight(compressed);
+      cmSetDoc(JSON.stringify(obj));
       S.tools.saveDirty = true;
     } catch (e) {
-      if (errorEl) {
-        errorEl.textContent = 'JSON 解析失败: ' + e.message;
-        errorEl.style.display = '';
-      }
+      toolsShowToast('JSON 无效 — ' + cmErrPos(e, val) + ': ' + e.message.replace(/ in JSON at position \\d+/, ''));
     }
   };
 
   window.toolsCopyJson = function() {
-    var editor = document.getElementById('tools-editor');
-    if (!editor) return;
-    var val = editor.value.trim();
+    var val = cmGetDoc().trim();
     if (!val) return;
-    try {
-      navigator.clipboard.writeText(val).then(function() {
-        toolsShowToast('已复制到剪贴板');
-      }).catch(function() {
-        editor.select();
-        document.execCommand('copy');
-        toolsShowToast('已复制到剪贴板');
-      });
-    } catch (e) {
+    navigator.clipboard.writeText(val).then(function() {
+      toolsShowToast('已复制到剪贴板');
+    }).catch(function() {
       toolsShowToast('复制失败');
-    }
+    });
   };
 
   window.toolsClearJson = function() {
-    var editor = document.getElementById('tools-editor');
-    var errorEl = document.getElementById('tools-editor-error');
-    if (editor) {
-      editor.value = '';
-      editor.focus();
-    }
-    if (errorEl) errorEl.style.display = 'none';
-    toolsUpdateHighlight('');
+    cmSetDoc('');
+    if (_cmView) _cmView.focus();
     S.tools.saveDirty = false;
   };
 
-  // ── JSON Syntax Highlighting ──
+  // ── Open local file ──
+  window.toolsOpenFile = function() {
+    var input = document.getElementById('tools-file-input');
+    if (input) input.click();
+  };
 
-  function toolsUpdateHighlight(text) {
-    var codeEl = document.getElementById('tools-editor-code');
-    if (!codeEl) return;
-    if (!text) { codeEl.innerHTML = ''; return; }
-    var highlighted = highlightJson(text);
-    var NL = String.fromCharCode(10);
-    var lines = highlighted.split(NL);
-    // Remove trailing empty line from final newline
-    if (lines.length > 0 && lines[lines.length - 1] === '') {
-      lines.pop();
-    }
-    codeEl.innerHTML = lines.map(function(line, i) {
-      return '<span class="tools-line-row"><span class="tools-line-num">' + (i + 1) + '</span>' + line + '</span>';
-    }).join('');
-  }
-
-  function highlightJson(text) {
-    var out = '';
-    var i = 0;
-    var len = text.length;
-
-    function esc(s) {
-      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    while (i < len) {
-      var ch = text[i];
-
-      // String
-      if (ch === '"') {
-        var start = i;
-        i++;
-        while (i < len) {
-          if (text[i] === '\\\\') { i += 2; continue; }
-          if (text[i] === '"') { i++; break; }
-          i++;
-        }
-        var raw = text.slice(start, i);
-        // Peek ahead: if followed by ':' (ignoring whitespace), it's a key
-        var after = text.slice(i);
-        var trimmed = after.trimStart();
-        if (trimmed[0] === ':') {
-          out += '<span class="json-key">' + esc(raw) + '</span>';
-        } else {
-          out += '<span class="json-string">' + esc(raw) + '</span>';
-        }
-        continue;
-      }
-
-      // Number
-      var numMatch = text.slice(i).match(/^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?/);
-      if (numMatch && numMatch[0].length > 0) {
-        out += '<span class="json-number">' + esc(numMatch[0]) + '</span>';
-        i += numMatch[0].length;
-        continue;
-      }
-
-      // Keywords: true, false, null
-      var kwMatch = text.slice(i).match(/^(true|false|null)\\b/);
-      if (kwMatch) {
-        out += '<span class="json-keyword">' + esc(kwMatch[0]) + '</span>';
-        i += kwMatch[0].length;
-        continue;
-      }
-
-      // Plain character
-      out += esc(ch);
-      i++;
-    }
-
-    return out;
-  }
-
-  // Sync textarea scroll to backdrop
-  window.toolsSyncScroll = function() {
-    var editor = document.getElementById('tools-editor');
-    var backdrop = document.getElementById('tools-editor-backdrop');
-    if (editor && backdrop) {
-      backdrop.scrollTop = editor.scrollTop;
-      backdrop.scrollLeft = editor.scrollLeft;
-    }
+  window.toolsHandleFileOpen = function(event) {
+    var file = event.target.files && event.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function() {
+      initCodeMirror();
+      cmSetDoc(reader.result);
+      S.tools.saveDirty = false;
+      toolsShowToast('已加载: ' + file.name);
+    };
+    reader.onerror = function() {
+      toolsShowToast('读取文件失败');
+    };
+    reader.readAsText(file, 'UTF-8');
+    // Reset input so the same file can be re-opened
+    event.target.value = '';
   };
 
   // ── JSON Save ──
   window.toolsSaveJson = function() {
-    var editor = document.getElementById('tools-editor');
-    if (!editor) return;
-    var val = editor.value.trim();
+    var val = cmGetDoc().trim();
     if (!val) return;
     try {
       JSON.parse(val);
@@ -668,6 +670,19 @@ export const TOOLS_JS = `
     }
   };
 
+  // ── Helpers ──
+
+  function formatRelativeTime(ts) {
+    var diff = Date.now() - ts;
+    var mins = Math.floor(diff / 60000);
+    if (mins < 1) return '\\u521a\\u521a';
+    if (mins < 60) return mins + '\\u5206\\u949f\\u524d';
+    var hrs = Math.floor(mins / 60);
+    if (hrs < 24) return hrs + '\\u5c0f\\u65f6\\u524d';
+    var days = Math.floor(hrs / 24);
+    return days + '\\u5929\\u524d';
+  }
+
   // ── Saved list ──
   async function toolsLoadSavedList() {
     var listEl = document.getElementById('tools-saved-list');
@@ -703,10 +718,9 @@ export const TOOLS_JS = `
       var res = await fetch('/api/tools/json-format/' + encodeURIComponent(name));
       if (!res.ok) throw new Error('Failed');
       var data = await res.json();
-      var editor = document.getElementById('tools-editor');
-      if (editor) editor.value = data.content;
       toolsSwitchSubtab('edit');
-      toolsFormatJson();
+      initCodeMirror();
+      cmSetDoc(data.content);
       toolsShowToast('已加载: ' + name);
     } catch (e) {
       toolsShowToast('加载失败');

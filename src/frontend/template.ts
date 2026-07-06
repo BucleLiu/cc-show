@@ -2,7 +2,7 @@
 // Single-file SPA with zero external dependencies (no CDN, no npm, no frameworks)
 import { NOTES_CSS, NOTES_NAV_ITEM, NOTES_MODULE_HTML, NOTES_MODAL_HTML, NOTES_JS, NOTES_MARKED } from './notes-module.js'
 import { PROMPTS_CSS, PROMPTS_NAV_ITEM, PROMPTS_MODULE_HTML, PROMPTS_JS } from './prompts-module.js'
-import { TOOLS_CSS, TOOLS_NAV_ITEM, TOOLS_MODULE_HTML, TOOLS_JS } from './tools-module.js'
+import { TOOLS_CSS, TOOLS_NAV_ITEM, TOOLS_MODULE_HTML, TOOLS_JS, CODEMIRROR_BUNDLE } from './tools-module.js'
 
 export const HTML_TEMPLATE = `<!DOCTYPE html>
 <html lang="zh" data-theme="light">
@@ -1791,6 +1791,7 @@ ${PROMPTS_CSS}
 ${TOOLS_CSS}
 </style>
 <script>${NOTES_MARKED}</script>
+<script>${CODEMIRROR_BUNDLE}</script>
 </head>
 <body>
 <div id="app">

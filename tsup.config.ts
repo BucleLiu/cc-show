@@ -12,6 +12,14 @@ try {
   markedMinJs = 'window.marked={parse:function(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}};'
 }
 
+// Read CodeMirror bundle at build time and inject as a define constant
+let codemirrorJs = ''
+try {
+  codemirrorJs = readFileSync(join(__dirname, 'src/frontend/vendor/codemirror.bundle.js'), 'utf-8')
+} catch {
+  codemirrorJs = 'window.CodeMirrorSetup={};'
+}
+
 export default defineConfig({
   entry: ['src/cli.ts'],
   format: ['cjs'],
@@ -31,5 +39,6 @@ export default defineConfig({
   define: {
     '__PACKAGE_VERSION__': JSON.stringify(pkg.version),
     '__MARKED_MIN_JS__': JSON.stringify(markedMinJs),
+    '__CODEMIRROR_MIN_JS__': JSON.stringify(codemirrorJs),
   },
 })
