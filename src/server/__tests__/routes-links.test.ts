@@ -18,7 +18,7 @@ describe('notes links routes', () => {
 
   beforeAll(async () => {
     process.env.CCS_HOME = TMP_BASE
-    process.env.CCS_NOTE = '1'
+    process.env.CCS_TOOLS = '1'
     routesMod = await import('../routes.js')
   })
 

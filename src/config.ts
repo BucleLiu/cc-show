@@ -40,7 +40,6 @@ export interface CcsConfig {
   lang:    'zh' | 'en'
   dataDir: string
   modes:   CcsModes
-  note?:   boolean
   prompts?: boolean
   tools?:  boolean
   proxy:   ProxyConfig
@@ -52,11 +51,11 @@ const DEFAULTS: CcsConfig = {
   port:    8765,
   lang:    'zh',
   dataDir: join(homedir(), '.claude'),
-  note:    false,
   prompts: false,
   tools:   false,
   modes: {
     claude: { enabled: true },
+    codex:  { enabled: true },
   },
   proxy: {
     port:     18888,
@@ -155,7 +154,7 @@ export function getConfigValue(key: string): unknown {
 
 export function setConfigValue(key: string, value: string): void {
   // Flat keys
-  const flatKeys: (keyof CcsConfig)[] = ['port', 'lang', 'dataDir', 'note', 'prompts', 'tools']
+  const flatKeys: (keyof CcsConfig)[] = ['port', 'lang', 'dataDir', 'prompts', 'tools']
 
   if (flatKeys.includes(key as keyof CcsConfig)) {
     let parsed: string | number | boolean = value
@@ -168,12 +167,6 @@ export function setConfigValue(key: string, value: string): void {
     }
     if (key === 'lang' && value !== 'zh' && value !== 'en') {
       throw new Error(`Invalid lang: ${value}. Must be 'zh' or 'en'`)
-    }
-    if (key === 'note') {
-      if (value !== 'true' && value !== 'false') {
-        throw new Error(`Invalid note: ${value}. Must be 'true' or 'false'`)
-      }
-      parsed = value === 'true'
     }
     if (key === 'prompts') {
       if (value !== 'true' && value !== 'false') {
@@ -236,7 +229,7 @@ export function setConfigValue(key: string, value: string): void {
     throw new Error(`Unknown config key: ${key}. Valid modes keys: modes.<name>.enabled`)
   }
 
-  throw new Error(`Unknown config key: ${key}. Valid keys: port, lang, dataDir, note, prompts, tools, proxy.port, proxy.upstream, modes.<name>.enabled`)
+  throw new Error(`Unknown config key: ${key}. Valid keys: port, lang, dataDir, prompts, tools, proxy.port, proxy.upstream, modes.<name>.enabled`)
 }
 
 export function listConfig(): CcsConfig {

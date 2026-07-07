@@ -1,6 +1,6 @@
 // Auto-extracted from Python server.py HTML_TEMPLATE
 // Single-file SPA with zero external dependencies (no CDN, no npm, no frameworks)
-import { NOTES_CSS, NOTES_NAV_ITEM, NOTES_MODULE_HTML, NOTES_MODAL_HTML, NOTES_JS, NOTES_MARKED } from './notes-module.js'
+import { NOTES_CSS, NOTES_MODAL_HTML, NOTES_JS, NOTES_MARKED } from './notes-module.js'
 import { PROMPTS_CSS, PROMPTS_NAV_ITEM, PROMPTS_MODULE_HTML, PROMPTS_JS } from './prompts-module.js'
 import { TOOLS_CSS, TOOLS_NAV_ITEM, TOOLS_MODULE_HTML, TOOLS_JS, CODEMIRROR_BUNDLE } from './tools-module.js'
 
@@ -1819,7 +1819,6 @@ ${TOOLS_CSS}
       <div class="nav-tooltip">&#20351;&#29992;&#25968;&#25454;&#32479;&#35745;</div>
     </div>
 ${PROMPTS_NAV_ITEM}
-${NOTES_NAV_ITEM}
 ${TOOLS_NAV_ITEM}
     <div class="nav-spacer"></div>
     <div class="nav-item" id="theme-btn" onclick="toggleTheme()">
@@ -2021,7 +2020,6 @@ ${TOOLS_NAV_ITEM}
         </div>
       </div>
 ${PROMPTS_MODULE_HTML}
-${NOTES_MODULE_HTML}
 ${TOOLS_MODULE_HTML}
     </div>
   </div>
@@ -2132,7 +2130,7 @@ function highlight(text, query) {
 }
 
 // ── Hash State ──
-const VALID_MODULES = ['overview', 'stats', 'history', 'plans', 'prompts', 'notes', 'tools'];
+const VALID_MODULES = ['overview', 'stats', 'history', 'plans', 'prompts', 'tools'];
 function parseHash() {
   const raw = location.hash.replace(/^#/, '');
   if (!raw) return { module: 'overview', params: {} };
@@ -2228,9 +2226,6 @@ function switchModule(id, pushHash = true) {
     document.getElementById('topbar-title').textContent = 'Prompts';
     document.getElementById('topbar-stats').innerHTML = '';
     if (!S.prompts.data) loadPrompts();
-  } else if (id === 'notes') {
-    document.getElementById('topbar-title').textContent = '\u7b14\u8bb0';
-    document.getElementById('topbar-stats').innerHTML = '';
   } else if (id === 'tools') {
     document.getElementById('topbar-title').textContent = '\u5de5\u5177\u7bb1';
     document.getElementById('topbar-stats').innerHTML = '';
@@ -2328,6 +2323,7 @@ const OV_COLORS = [
 ];
 
 function updateOverviewTopbar() {
+  if (S.activeModule !== 'overview') return;
   const el = document.getElementById('topbar-stats');
   if (!S.overview.data) { el.innerHTML = ''; return; }
   const k = S.overview.data.kpi;
@@ -4042,9 +4038,13 @@ function restoreStateFromHash(module, params) {
     if (params.plan) {
       S.plans.selectedPlan = params.plan;
     }
-  } else if (module === 'notes') {
-    if (params.tab) {
-      window._pendingNotesTab = params.tab;
+  } else if (module === 'prompts') {
+    if (params.id) {
+      window._pendingPromptSelect = params.id;
+    }
+  } else if (module === 'tools') {
+    if (params.tool) {
+      window._pendingToolSelect = params.tool;
     }
     if (params.note) {
       window._pendingNoteSelect = params.note;
@@ -4055,9 +4055,21 @@ function restoreStateFromHash(module, params) {
     if (params.file) {
       window._pendingFileSelect = params.file;
     }
-  } else if (module === 'prompts') {
-    if (params.id) {
-      window._pendingPromptSelect = params.id;
+    if (params.tab) {
+      window._pendingNotesTab = params.tab;
+    }
+  } else if (module === 'notes') {
+    if (params.note) {
+      window._pendingNoteSelect = params.note;
+    }
+    if (params.link) {
+      window._pendingLinkSelect = params.link;
+    }
+    if (params.file) {
+      window._pendingFileSelect = params.file;
+    }
+    if (params.tab) {
+      window._pendingNotesTab = params.tab;
     }
   }
 }
@@ -4072,9 +4084,6 @@ window.addEventListener('load', () => {
   const saved = localStorage.getItem('cc-show-theme') || 'light';
   applyTheme(saved);
 
-  // ── Notes init (must run before switchModule so the hook is in place) ──
-  notesInit();
-  notesHookSwitchModule();
   promptsInit();
   toolsInit();
   toolsHookSwitchModule();
@@ -4092,6 +4101,10 @@ window.addEventListener('load', () => {
   initPanelResize(document.querySelector('.plans-list-panel'), 'plans', 120, 500);
 
   const { module, params } = parseHash();
+  // Restore stats tab BEFORE switchModule so it loads the correct data
+  if (module === 'stats' && params.tab) {
+    S.stats.activeTab = params.tab;
+  }
   if (module === 'overview') {
     loadOverview();
   } else {
@@ -4120,6 +4133,17 @@ window.addEventListener('load', () => {
     }
   });
 });
+
+// ── 通用原生文件选择器（供笔记/JSON模块复用） ──
+function pickNativePath(type, callback) {
+  fetch('/api/pick-path', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: type })
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.path && callback) callback(data.path);
+  }).catch(function() {});
+}
 ${PROMPTS_JS}
 ${NOTES_JS}
 ${TOOLS_JS}

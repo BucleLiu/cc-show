@@ -53,6 +53,16 @@ import {
   getJsonFileContent,
   saveJsonFile,
   deleteJsonFile,
+  listJsonLinks,
+  addJsonLink,
+  removeJsonLink,
+  expandJsonLink,
+  expandJsonDir,
+  readJsonLinkFile,
+  readJsonByPath,
+  revealJsonLink,
+  pickNativePath,
+  JsonLinkError,
 } from '../data/tools.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -138,9 +148,9 @@ export async function handleRequest(
   const enabledModes = getEnabledModes(cfg)
   const codemakerEnabled = enabledModes.includes('codemaker')
   const codexEnabled = enabledModes.includes('codex')
-  const noteEnabled = cfg.note === true || process.env.CCS_NOTE === '1'
-  const promptsEnabled = cfg.prompts !== false
   const toolsEnabled = cfg.tools === true || process.env.CCS_TOOLS === '1'
+  const noteEnabled = toolsEnabled
+  const promptsEnabled = cfg.prompts !== false
 
   // ── GET ──────────────────────────────────────────────────────────────────
 
@@ -327,7 +337,7 @@ export async function handleRequest(
         } catch (err) {
           if (err instanceof NoteLinkError) {
             const code = err.code
-            const status = code === 'LINK_NOT_FOUND' || code === 'TARGET_MISSING' ? 404 : 500
+            const status = code === 'LINK_NOT_FOUND' || code === 'TARGET_MISSING' ? 404 : 400
             res.writeHead(status, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ error: err.message }))
             return
@@ -437,6 +447,80 @@ export async function handleRequest(
           return
         }
       }
+
+      // GET /api/tools/json-links — list all links
+      if (path === '/api/tools/json-links') {
+        try {
+          return sendJson(res, listJsonLinks())
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(err) }))
+          return
+        }
+      }
+
+      // GET /api/tools/json-links/:id/tree
+      const jsonLinksTreeMatch = path.match(/^\/api\/tools\/json-links\/([^/]+)\/tree$/)
+      if (jsonLinksTreeMatch) {
+        const id = jsonLinksTreeMatch[1]
+        try {
+          return sendJson(res, expandJsonLink(id))
+        } catch (err) {
+          if (err instanceof JsonLinkError) {
+            const code = err.code
+            const status = code === 'LINK_NOT_FOUND' || code === 'TARGET_MISSING' ? 404 : 400
+            res.writeHead(status, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: err.message }))
+            return
+          }
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(err) }))
+          return
+        }
+      }
+
+      // GET /api/tools/json-links/:id/content
+      const jsonLinksContentMatch = path.match(/^\/api\/tools\/json-links\/([^/]+)\/content$/)
+      if (jsonLinksContentMatch) {
+        const id = jsonLinksContentMatch[1]
+        try {
+          return sendJson(res, readJsonLinkFile(id))
+        } catch (err) {
+          if (err instanceof JsonLinkError) {
+            const code = err.code
+            const status = code === 'LINK_NOT_FOUND' || code === 'TARGET_MISSING' ? 404 : 400
+            res.writeHead(status, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: err.message }))
+            return
+          }
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(err) }))
+          return
+        }
+      }
+
+      // GET /api/tools/json-links/:id/reveal
+      const jsonLinksRevealMatch = path.match(/^\/api\/tools\/json-links\/([^/]+)\/reveal$/)
+      if (jsonLinksRevealMatch) {
+        const id = jsonLinksRevealMatch[1]
+        try {
+          revealJsonLink(id)
+          res.writeHead(204)
+          res.end()
+          return
+        } catch (err) {
+          if (err instanceof JsonLinkError) {
+            const code = err.code
+            const status = code === 'LINK_NOT_FOUND' || code === 'TARGET_MISSING' ? 404 : 400
+            res.writeHead(status, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: err.message }))
+            return
+          }
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(err) }))
+          return
+        }
+      }
     }
 
     // ── CLAUDE.md API (GET) ─────────────────────────────────────────────────
@@ -536,6 +620,28 @@ export async function handleRequest(
           const status = msg.includes('not found') ? 404 : 400
           res.writeHead(status, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: msg }))
+          return
+        }
+      }
+
+      // DELETE /api/tools/json-links/:id
+      const jsonLinksDelMatch = path.match(/^\/api\/tools\/json-links\/([^/]+)$/)
+      if (jsonLinksDelMatch) {
+        const id = jsonLinksDelMatch[1]
+        try {
+          removeJsonLink(id)
+          res.writeHead(204)
+          res.end()
+          return
+        } catch (err) {
+          if (err instanceof JsonLinkError) {
+            const status = err.code === 'LINK_NOT_FOUND' ? 404 : 400
+            res.writeHead(status, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: err.message }))
+            return
+          }
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(err) }))
           return
         }
       }
@@ -907,6 +1013,116 @@ export async function handleRequest(
         })
         return
       }
+
+      // POST /api/tools/json-links — add link
+      if (path === '/api/tools/json-links') {
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          try {
+            const input = JSON.parse(body) as { path?: string; label?: string }
+            if (!input.path) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'path is required' }))
+              return
+            }
+            const link = addJsonLink({ path: input.path, label: input.label })
+            const bodyBuf = Buffer.from(JSON.stringify(link), 'utf-8')
+            res.writeHead(201, {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Content-Length': bodyBuf.length,
+            })
+            res.end(bodyBuf)
+          } catch (err) {
+            if (err instanceof JsonLinkError) {
+              const code = err.code
+              const status = code === 'NOT_FOUND' ? 404 : code === 'DUPLICATE' ? 409 : 400
+              res.writeHead(status, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: err.message, code }))
+              return
+            }
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: String(err) }))
+          }
+        })
+        return
+      }
+
+      // POST /api/tools/json-links/read — read JSON by path
+      if (path === '/api/tools/json-links/read') {
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          try {
+            const input = JSON.parse(body) as { path?: string }
+            if (!input.path) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'path is required' }))
+              return
+            }
+            const result = readJsonByPath(input.path)
+            return sendJson(res, result)
+          } catch (err) {
+            if (err instanceof JsonLinkError) {
+              const code = err.code
+              const status = code === 'NOT_FOUND' ? 404 : 400
+              res.writeHead(status, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: err.message, code }))
+              return
+            }
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: String(err) }))
+          }
+        })
+        return
+      }
+
+      // POST /api/tools/json-links/expand-dir — expand an arbitrary directory (lazy)
+      if (path === '/api/tools/json-links/expand-dir') {
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          try {
+            const input = JSON.parse(body) as { path?: string }
+            if (!input.path) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'path is required' }))
+              return
+            }
+            const result = expandJsonDir(input.path)
+            return sendJson(res, result)
+          } catch (err) {
+            if (err instanceof JsonLinkError) {
+              const code = err.code
+              const status = code === 'NOT_FOUND' ? 404 : 400
+              res.writeHead(status, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: err.message, code }))
+              return
+            }
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: String(err) }))
+          }
+        })
+        return
+      }
+    }
+
+    // POST /api/pick-path — 调用系统原生文件/文件夹选择器，返回绝对路径
+    if (method === 'POST' && path === '/api/pick-path') {
+      let body = ''
+      req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+      req.on('end', () => {
+        try {
+          const input = JSON.parse(body) as { type?: string }
+          const type = input.type === 'folder' ? 'folder' : 'file'
+          const result = pickNativePath(type)
+          return sendJson(res, { path: result })
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(err) }))
+        }
+      })
+      return
     }
 
     return send404(res)

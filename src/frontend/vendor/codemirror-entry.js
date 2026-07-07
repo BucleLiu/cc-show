@@ -9,6 +9,7 @@ import { json, jsonParseLinter } from '@codemirror/lang-json'
 import { linter } from '@codemirror/lint'
 import { syntaxHighlighting, defaultHighlightStyle, foldGutter, foldKeymap } from '@codemirror/language'
 import { oneDark } from '@codemirror/theme-one-dark'
+import { search, searchKeymap } from '@codemirror/search'
 
 window.CodeMirrorSetup = {
   EditorView,
@@ -28,4 +29,6 @@ window.CodeMirrorSetup = {
   foldGutter,
   foldKeymap,
   oneDark,
+  search,
+  searchKeymap,
 }

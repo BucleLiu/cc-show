@@ -174,6 +174,94 @@ export const TOOLS_CSS = `
   text-decoration-style: wavy;
 }
 
+	/* Search panel */
+	.tools-cm-wrap .cm-editor .cm-panel.cm-search {
+	  background: var(--bg-surface);
+	  border-bottom: 1px solid var(--border-sub);
+	  padding: 6px 10px;
+	  display: flex;
+	  align-items: center;
+	  gap: 6px;
+	  flex-wrap: wrap;
+	  font-size: 12px;
+	  color: var(--text-sec);
+	}
+	.tools-cm-wrap .cm-editor .cm-panel.cm-search .cm-textfield {
+	  height: 26px;
+	  padding: 0 8px;
+	  border: 1px solid var(--border-muted);
+	  border-radius: 6px;
+	  background: var(--bg-elevated);
+	  color: var(--text-pri);
+	  font-size: 12px;
+	  font-family: inherit;
+	  outline: none;
+	  min-width: 140px;
+	}
+	.tools-cm-wrap .cm-editor .cm-panel.cm-search .cm-textfield:focus {
+	  border-color: var(--accent);
+	  box-shadow: 0 0 0 2px var(--accent-dim);
+	}
+	.tools-cm-wrap .cm-editor .cm-panel.cm-search .cm-textfield::placeholder {
+	  color: var(--text-muted);
+	}
+	.tools-cm-wrap .cm-editor .cm-panel.cm-search button,
+	.tools-cm-wrap .cm-editor .cm-panel.cm-search .cm-button {
+	  height: 26px;
+	  padding: 0 8px;
+	  border: 1px solid var(--border-muted);
+	  border-radius: 6px;
+	  background: var(--bg-elevated);
+	  color: var(--text-sec);
+	  font-size: 11px;
+	  font-weight: 600;
+	  cursor: pointer;
+	  display: inline-flex;
+	  align-items: center;
+	  gap: 3px;
+	  transition: background 0.12s, border-color 0.12s, color 0.12s;
+	}
+	.tools-cm-wrap .cm-editor .cm-panel.cm-search button:hover,
+	.tools-cm-wrap .cm-editor .cm-panel.cm-search .cm-button:hover {
+	  background: var(--bg-hover);
+	  border-color: var(--border-acc);
+	  color: var(--text-pri);
+	}
+	.tools-cm-wrap .cm-editor .cm-panel.cm-search button[name="close"] {
+	  margin-left: auto;
+	  border: none;
+	  background: transparent;
+	  font-size: 16px;
+	  color: var(--text-muted);
+	  padding: 0 4px;
+	}
+	.tools-cm-wrap .cm-editor .cm-panel.cm-search button[name="close"]:hover {
+	  color: #dc2626;
+	  background: rgba(220,38,38,0.08);
+	}
+	.tools-cm-wrap .cm-editor .cm-panel.cm-search label {
+	  display: inline-flex;
+	  align-items: center;
+	  gap: 3px;
+	  font-size: 11px;
+	  cursor: pointer;
+	  color: var(--text-muted);
+	}
+	.tools-cm-wrap .cm-editor .cm-panel.cm-search input[type="checkbox"] {
+	  accent-color: var(--accent);
+	  width: 13px;
+	  height: 13px;
+	}
+	/* Search match highlight */
+	.tools-cm-wrap .cm-editor .cm-searchMatch {
+	  background: var(--accent-glow);
+	  border-bottom: 2px solid var(--accent);
+	}
+	.tools-cm-wrap .cm-editor .cm-searchMatch.cm-searchMatch-selected {
+	  background: rgba(255,180,40,0.35);
+	  border-bottom-color: #e6a000;
+	}
+
 /* Saved list */
 .tools-saved-list { flex: 1; overflow-y: auto; padding: 4px; }
 .tools-saved-item {
@@ -235,6 +323,54 @@ export const TOOLS_CSS = `
   border: 1px solid var(--accent); background: var(--accent);
   color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
 }
+
+/* ── Linked panel ── */
+.tools-linked-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; padding:12px; }
+.tools-linked-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.tools-linked-hint { color: var(--tools-muted, #888); font-size:12px; }
+.tools-linked-list { flex:1; overflow-y:auto; }
+.tools-link-row { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:6px; cursor:pointer; }
+.tools-link-row:hover { background: var(--tools-hover, rgba(0,0,0,0.05)); }
+.tools-link-row.active { background: var(--tools-active, rgba(0,0,0,0.08)); }
+.tools-link-arrow { width:14px; text-align:center; color:var(--tools-muted,#888); cursor:pointer; }
+.tools-link-icon { font-size:16px; }
+.tools-link-label { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tools-link-tree { margin-left:22px; }
+.tools-link-type-row { display:flex; gap:16px; margin-bottom:12px; font-size:14px; }
+.tools-link-type-row label { display:flex; align-items:center; gap:4px; cursor:pointer; }
+
+/* 引用导入弹框布局 */
+.tools-import-section { margin-bottom: 10px; }
+.tools-import-section-title {
+  font-size: 11px; font-weight: 600; color: var(--text-sec); margin-bottom: 6px;
+}
+.tools-import-divider {
+  display: flex; align-items: center; gap: 10px; margin: 12px 0;
+  color: var(--text-muted); font-size: 11px;
+}
+.tools-import-divider::before,
+.tools-import-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border-muted);
+}
+.tools-import-drop {
+  border: 2px dashed var(--border-muted); border-radius: 10px;
+  padding: 16px 12px; text-align: center; color: var(--text-muted);
+  transition: border-color 0.15s, background 0.15s;
+}
+.tools-import-drop-icon { font-size: 22px; margin-bottom: 6px; }
+.tools-import-drop-text { font-size: 11px; margin-bottom: 10px; }
+.tools-file-btn {
+  padding: 5px 14px; border-radius: 7px; border: 1px solid var(--border-muted);
+  background: var(--bg-elevated); color: var(--text-sec); font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.tools-file-btn:hover { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+
+/* ── Linked readonly bar ── */
+.tools-linked-readonly-bar { display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--bg-surface); border-bottom:1px solid var(--border-sub); flex-wrap:wrap; }
+.tools-linked-path { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--tools-muted,#888); min-width:200px; }
+.tools-linked-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.tools-link-tree-node .tools-link-row { padding:4px 8px; }
 `
 
 // ── 2. Nav item (wrench icon SVG) ──────────────────────────────────────────────
@@ -289,6 +425,8 @@ export const TOOLS_JS = `
 
   var ICON_JSON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3C5 3 4 5 4 7v3c0 1-1 2-2 2 1 0 2 1 2 2v3c0 2 1 4 4 4"/><path d="M16 3c3 0 4 2 4 4v3c0 1 1 2 2 2-1 0-2 1-2 2v3c0 2-1 4-4 4"/></svg>';
 
+  var ICON_NOTE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
+
   var ICON_FOLDER = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6z"/></svg>';
 
   var ICON_CHECK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
@@ -304,23 +442,39 @@ export const TOOLS_JS = `
   var ICON_OPEN = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
 
   // ── Tool registry (extensible — add entries here for new tools) ──
-  var TOOLS = [
-    {
-      id: 'json-format',
-      icon: ICON_JSON,
-      name: 'JSON 格式化',
-      desc: '编辑、格式化、压缩 JSON',
-    },
-    // Future tools: add entries here
-  ];
+  var TOOLS = [];
+  if (window.CCS_NOTE) {
+    TOOLS.push({
+      id: 'markdown-notes',
+      icon: ICON_NOTE,
+      name: 'Markdown笔记',
+      desc: '编辑、预览、管理 Markdown 笔记',
+    });
+  }
+  TOOLS.push({
+    id: 'json-format',
+    icon: ICON_JSON,
+    name: 'JSON 格式化',
+    desc: '编辑、格式化、压缩 JSON',
+  });
+  // Future tools: add entries here
 
   // ── State ──
   S.tools = {
     activeToolId: null,
-    activeSubtab: 'edit', // 'edit' | 'saved'
+    activeSubtab: 'edit', // 'edit' | 'saved' | 'linked'
     savedFiles: null,
     saveDirty: false,
   };
+
+  // ── Link list state ──
+  var _linkListCache = null;
+  var _activeLinkedFile = null;
+  var _activePath = null;  // 当前聚焦项的绝对路径（文件夹或文件），用于高亮
+  // 按需加载缓存：absPath → { nodes: [...], truncated: bool }
+  var _dirCache = {};
+  // 展开状态：absPath → true
+  var _expandedDirs = {};
 
   // ── Init ──
   function toolsInit() {
@@ -384,10 +538,10 @@ export const TOOLS_JS = `
     window.switchModule = function(id, pushState) {
       orig(id, pushState);
       if (id === 'tools' && !S.tools.activeToolId) {
-        // Auto-select first tool
-        if (TOOLS.length > 0) {
-          toolsSelectTool(TOOLS[0].id, true);
-        }
+        // Use pending tool from hash, or default to first tool
+        var toolId = window._pendingToolSelect || (TOOLS.length > 0 ? TOOLS[0].id : null);
+        window._pendingToolSelect = null;
+        if (toolId) toolsSelectTool(toolId, true);
       }
     };
   }
@@ -403,12 +557,121 @@ export const TOOLS_JS = `
     if (emptyEl) emptyEl.style.display = 'none';
     if (innerEl) innerEl.style.display = 'flex';
 
-    if (toolId === 'json-format') {
+    if (toolId === 'markdown-notes') {
+      renderMarkdownNotesWorkarea(innerEl);
+      initNotesInTools();
+    } else if (toolId === 'json-format') {
       renderJsonFormatWorkarea(innerEl);
       initCodeMirror();
     }
     if (!silent) updateHash({ tool: toolId });
   };
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // Markdown Notes
+  // ═══════════════════════════════════════════════════════════════════════
+
+  var _notesToolInited = false;
+
+  function initNotesInTools() {
+    if (_notesToolInited) {
+      // Re-render list from cached state
+      if (typeof notesRenderList === 'function') notesRenderList();
+      return;
+    }
+    _notesToolInited = true;
+
+    // Init panel collapse + resize
+    var panel = document.querySelector('#tools-workarea-inner .notes-list-panel');
+    if (panel) {
+      if (typeof initPanelCollapse === 'function') initPanelCollapse(panel, 'tools-notes');
+      if (typeof initPanelResize === 'function') initPanelResize(panel, 'tools-notes', 120, 500);
+    }
+
+    // Esc to close import modal
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && typeof notesCloseImport === 'function') notesCloseImport();
+    });
+
+    // Restore tab from localStorage
+    if (typeof notesRestoreTab === 'function') notesRestoreTab();
+
+    // Load data
+    if (!_notesLoaded) {
+      _notesLoaded = true;
+      if (typeof loadNotesList === 'function') loadNotesList();
+      if (typeof loadNoteLinksList === 'function') loadNoteLinksList();
+    }
+  }
+
+  function renderMarkdownNotesWorkarea(container) {
+    container.innerHTML = ''
+      + '<div class="tools-notes-wrap">'
+      // List panel
+      + '<div class="notes-list-panel">'
+      + '<div class="notes-list-header">'
+      + '<button class="notes-new-btn" onclick="notesNewNote()">&#43; &#26032;&#24314;</button>'
+      + '<button class="notes-import-btn" onclick="notesOpenImport()">&#8593; &#23548;&#20837;</button>'
+      + '<button class="panel-toggle-btn always-show" title="&#25240;&#21472;&#38754;&#26495;" onclick="event.stopPropagation();togglePanelCollapse(this.closest(\\'.notes-list-panel\\'),\\'tools-notes\\')" style="flex:0;">&#9664;</button>'
+      + '</div>'
+      + '<div class="notes-tabs">'
+      + '<button class="notes-tab" id="notes-tab-local" onclick="notesSwitchTab(\\'local\\')"><span>&#26412;&#22320;&#31508;&#35760;</span><span class="notes-tab-count" id="notes-tab-local-count">0</span></button>'
+      + '<button class="notes-tab" id="notes-tab-links" onclick="notesSwitchTab(\\'links\\')"><span>&#24341;&#29992;&#31508;&#35760;</span><span class="notes-tab-count" id="notes-tab-links-count">0</span></button>'
+      + '</div>'
+      + '<div class="notes-search-wrap">'
+      + '<input type="text" id="notes-search" class="notes-search" placeholder="&#25628;&#32034;&#26631;&#39064;&#12289;&#20869;&#23481;&#12289;&#26631;&#31614;..." autocomplete="off" oninput="notesOnSearch(this.value)">'
+      + '</div>'
+      + '<div class="notes-list-scroll" id="notes-list-scroll">'
+      + '<div class="note-empty-state">'
+      + '<div class="note-empty-state-icon">&#9636;</div>'
+      + '<div>&#26082;&#26080;&#31508;&#35760;</div>'
+      + '</div>'
+      + '</div>'
+      + '<div class="panel-resize-handle"></div>'
+      + '</div>'
+      // Editor panel
+      + '<div class="notes-editor-panel" id="notes-editor-panel">'
+      + '<div class="notes-editor-empty" id="notes-editor-empty">'
+      + '<div class="notes-editor-empty-icon">&#9636;</div>'
+      + '<div class="notes-editor-empty-text">&#36873;&#25321;&#19968;&#26465;&#31508;&#35760;&#65292;&#25110;&#26032;&#24314;</div>'
+      + '</div>'
+      + '<div class="notes-editor-inner" id="notes-editor-inner" style="display:none;flex-direction:column;flex:1;overflow:hidden">'
+      + '<div class="notes-title-bar">'
+      + '<div style="display:flex; align-items:center; gap:8px">'
+      + '<input type="text" id="notes-title-input" class="notes-title-input" placeholder="&#31508;&#35760;&#26631;&#39064;" oninput="notesOnTitleChange(this.value)" style="flex:1; margin-bottom:0">'
+      + '<button class="note-backup-btn" id="note-backup-btn" onclick="notesBackupLink()" style="display:none">&#128190; &#22791;&#20221;</button>'
+      + '</div>'
+      + '<div class="notes-tags-row" id="notes-tags-row">'
+      + '<button class="note-add-tag-btn" id="notes-add-tag-btn" onclick="notesShowTagInput()">&#43; &#26631;&#31614;</button>'
+      + '</div>'
+      + '</div>'
+      + '<div class="notes-view-toolbar">'
+      + '<button class="notes-view-btn" id="notes-btn-preview" onclick="notesSwitchView(\\'preview\\')">&#9711; &#39044;&#35272;</button>'
+      + '<button class="notes-view-btn" id="notes-btn-edit" onclick="notesSwitchView(\\'edit\\')">&#9998; &#32534;&#36753;</button>'
+      + '<button class="notes-view-btn" id="notes-btn-split" onclick="notesSwitchView(\\'split\\')">&#9633; &#20998;&#23631;</button>'
+      + '</div>'
+      + '<div class="notes-content-area" id="notes-content-area">'
+      + '<textarea id="notes-editor-textarea" class="notes-editor-textarea" placeholder="&#24320;&#22987;&#20889;&#20316;..." oninput="notesOnContentChange(this.value)"></textarea>'
+      + '<div id="notes-preview-shell" class="notes-preview-shell no-toc">'
+      + '<div id="notes-preview-pane" class="notes-preview-pane"></div>'
+      + '<nav id="notes-preview-toc" class="notes-preview-toc" aria-label="Markdown heading navigation"></nav>'
+      + '</div>'
+      + '</div>'
+      + '<div class="notes-status-bar">'
+      + '<span class="notes-save-status saved" id="notes-save-status">&#10003; &#24050;&#20445;&#23384;</span>'
+      + '<span class="note-path-row" id="note-path-row" onclick="notesCopyPath()" title="">'
+      + '<span class="note-path-icon">&#9636;</span>'
+      + '<span class="note-path-text" id="note-path-text"></span>'
+      + '<span class="note-path-copied" id="note-path-copied">&#10003; &#24050;&#22797;&#21046;</span>'
+      + '</span>'
+      + '<span id="notes-word-count">&#23383;&#25968;: 0</span>'
+      + '<span id="notes-line-count">&#34892;&#25968;: 0</span>'
+      + '<span class="note-reveal-btn" id="note-reveal-btn" onclick="notesRevealLink()" style="display:none">&#128193; &#22312; Finder &#20013;&#26174;&#31034;</span>'
+      + '</div>'
+      + '</div>'
+      + '</div>'
+      + '</div>';
+  }
 
   // ═══════════════════════════════════════════════════════════════════════
   // JSON Formatter
@@ -420,7 +683,17 @@ export const TOOLS_JS = `
       + '<div class="tools-subtabs">'
       + '<button class="tools-subtab active" id="tools-subtab-edit" onclick="toolsSwitchSubtab(\\'edit\\')">编辑</button>'
       + '<button class="tools-subtab" id="tools-subtab-saved" onclick="toolsSwitchSubtab(\\'saved\\')">已保存</button>'
+      + '<button class="tools-subtab" id="tools-subtab-linked" onclick="toolsSwitchSubtab(\\'linked\\')">已引用</button>'
       + '</div>'
+      // Readonly linked file bar (hidden by default)
+      + '<div class="tools-linked-readonly-bar" id="tools-linked-readonly-bar" style="display:none">'
+      + '<span class="tools-linked-path"></span>'
+      + '<span class="tools-linked-actions">'
+      + '<button class="tools-btn" onclick="toolsCopyLinked()">复制全部</button>'
+      + '<button class="tools-btn" onclick="toolsLoadLinkedToEditor()">加载到编辑器</button>'
+      + '<button class="tools-btn" id="tools-btn-reveal" onclick="toolsRevealLinked()">在 Finder 中显示</button>'
+      + '<button class="tools-btn danger" onclick="toolsExitLinkedReadonly()">退出只读</button>'
+      + '</span></div>'
       // Toolbar
       + '<div class="tools-toolbar" id="tools-toolbar">'
       + '<button class="tools-btn primary" onclick="toolsFormatJson()">' + ICON_CHECK + ' 格式化</button>'
@@ -438,12 +711,21 @@ export const TOOLS_JS = `
       // Saved list (hidden by default)
       + '<div class="tools-saved-list" id="tools-saved-list" style="display:none">'
       + '<div class="tools-saved-empty"><div>' + ICON_FOLDER + '</div><div>加载中...</div></div>'
+      + '</div>'
+      // Linked panel (hidden by default)
+      + '<div class="tools-linked-panel" id="tools-linked-panel" style="display:none">'
+      + '<div class="tools-linked-toolbar">'
+      + '<button class="tools-btn primary" onclick="toolsShowLinkDialog()">+ 添加引用</button>'
+      + '<span class="tools-linked-hint">仅做关联引用,不拷贝文件;只读查看</span>'
+      + '</div>'
+      + '<div class="tools-linked-list" id="tools-linked-list"></div>'
       + '</div>';
   }
 
   // ── CodeMirror ──
   var _cmView = null;
   var _cmThemeComp = null;
+  var _cmEditableComp = null;
 
   function cmGetSetup() {
     return window.CodeMirrorSetup || {};
@@ -463,12 +745,23 @@ export const TOOLS_JS = `
     if (!container) return;
 
     if (_cmView) {
-      // Already initialized — request a remeasure (handles display:none → display:'' transition)
-      _cmView.requestMeasure();
-      return _cmView;
+      // Check if the view is still attached to the current container.
+      // If renderJsonFormatWorkarea was called again, the old DOM is destroyed
+      // but _cmView still references the detached editor. Destroy and recreate.
+      if (_cmView.dom.parentNode !== container) {
+        _cmView.destroy();
+        _cmView = null;
+        _cmThemeComp = null;
+        _cmEditableComp = null;
+      } else {
+        // Already initialized — request a remeasure (handles display:none → display:'' transition)
+        _cmView.requestMeasure();
+        return _cmView;
+      }
     }
 
     _cmThemeComp = S.Compartment ? new S.Compartment : { of: function() { return []; } };
+    _cmEditableComp = S.Compartment ? new S.Compartment : { of: function(x) { return x || []; } };
 
     _cmView = new S.EditorView({
       doc: '',
@@ -480,12 +773,15 @@ export const TOOLS_JS = `
         S.json ? S.json() : null,
         S.linter && S.jsonParseLinter ? S.linter(S.jsonParseLinter()) : null,
         S.syntaxHighlighting ? S.syntaxHighlighting(S.defaultHighlightStyle) : null,
+        S.search ? S.search({ top: true }) : null,
         S.keymap ? S.keymap.of([
           (S.defaultKeymap || []),
           (S.historyKeymap || []),
           (S.foldKeymap || []),
+          (S.searchKeymap || []),
         ].flat()) : null,
         _cmThemeComp.of(cmThemeExtension()),
+        _cmEditableComp.of(S.EditorView.editable.of(true)),
       ].filter(Boolean),
       parent: container,
     });
@@ -512,16 +808,31 @@ export const TOOLS_JS = `
     var toolbar = document.getElementById('tools-toolbar');
     var cmWrap = document.getElementById('tools-cm-wrap');
     var savedList = document.getElementById('tools-saved-list');
+    var linkedPanel = document.getElementById('tools-linked-panel');
     if (tab === 'edit') {
       if (toolbar) toolbar.style.display = '';
       if (cmWrap) cmWrap.style.display = '';
       if (savedList) savedList.style.display = 'none';
+      if (linkedPanel) linkedPanel.style.display = 'none';
       initCodeMirror();
-    } else {
+      if (typeof toolsSetEditable === 'function') toolsSetEditable(true);
+    } else if (tab === 'saved') {
       if (toolbar) toolbar.style.display = 'none';
       if (cmWrap) cmWrap.style.display = 'none';
       if (savedList) savedList.style.display = '';
+      if (linkedPanel) linkedPanel.style.display = 'none';
+      toolsHideLinkedReadonlyBar();
+      _activeLinkedFile = null;
       toolsLoadSavedList();
+    } else {
+      // linked
+      if (toolbar) toolbar.style.display = 'none';
+      if (cmWrap) cmWrap.style.display = 'none';
+      if (savedList) savedList.style.display = 'none';
+      if (linkedPanel) linkedPanel.style.display = '';
+      toolsHideLinkedReadonlyBar();
+      _activeLinkedFile = null;
+      toolsLoadLinkList();
     }
   };
 
@@ -743,6 +1054,380 @@ export const TOOLS_JS = `
     }
   };
 
+  // ── Linked list ──
+  async function toolsLoadLinkList() {
+    var listEl = document.getElementById('tools-linked-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div class="tools-saved-empty"><div>' + ICON_FOLDER + '</div><div>加载中...</div></div>';
+    try {
+      var res = await fetch('/api/tools/json-links');
+      if (!res.ok) throw new Error('Failed');
+      var data = await res.json();
+      _linkListCache = data.links || [];
+      toolsRenderLinkList();
+    } catch (e) {
+      listEl.innerHTML = '<div class="tools-saved-empty"><div>' + ICON_FOLDER + '</div><div>加载引用列表失败</div></div>';
+    }
+  }
+
+  function toolsRenderLinkList() {
+    var listEl = document.getElementById('tools-linked-list');
+    if (!listEl) return;
+    var links = _linkListCache;
+    if (!links || links.length === 0) {
+      listEl.innerHTML = '<div class="tools-saved-empty"><div>' + ICON_FOLDER + '</div><div>暂无引用</div></div>';
+      return;
+    }
+    listEl.innerHTML = links.map(function(link) {
+      var isFolder = link.type === 'folder';
+      var icon = isFolder ? '\u{1F4C1}' : '\u{1F4C4}';
+      var arrowHtml = '';
+      var treeHtml = '';
+      if (isFolder) {
+        var expanded = _expandedDirs[link.path];
+        arrowHtml = '<span class="tools-link-arrow" onclick="event.stopPropagation();toolsToggleLinkFolder(\\'' + escAttr(link.id) + '\\')">' + (expanded ? '\\u25BE' : '\\u25B8') + '</span>';
+        if (expanded) {
+          treeHtml = '<div class="tools-link-tree" id="tools-link-tree-' + link.id + '"></div>';
+        }
+      }
+      var activeClass = (_activePath === link.path) ? ' active' : '';
+      var rowClick = isFolder
+        ? 'toolsToggleLinkFolder(\\'' + escAttr(link.id) + '\\')'
+        : 'toolsOpenLinkedFile(\\'' + escAttr(link.id) + '\\')';
+      return '<div class="tools-link-row' + activeClass + '" onclick="' + rowClick + '">'
+        + arrowHtml
+        + '<span class="tools-link-icon">' + icon + '</span>'
+        + '<span class="tools-link-label">' + escHtml(link.label) + '</span>'
+        + '<button class="tools-saved-item-del" title="移除引用" onclick="event.stopPropagation();toolsRemoveLink(\\'' + escAttr(link.id) + '\\')">&times;</button>'
+        + '</div>'
+        + treeHtml;
+    }).join('');
+    // Render tree content for expanded folders
+    links.forEach(function(link) {
+      if (link.type === 'folder' && _expandedDirs[link.path]) {
+        toolsRenderLinkTreeContainer(link.id);
+      }
+    });
+  }
+
+  // ── Add link dialog ──
+  window.toolsShowLinkDialog = function() {
+    var overlay = document.createElement('div');
+    overlay.className = 'tools-save-overlay';
+    overlay.id = 'tools-link-overlay';
+    overlay.innerHTML = '<div class="tools-save-dialog" style="width:420px">'
+      + '<h3>添加引用</h3>'
+      + '<div class="tools-import-section">'
+      + '<div class="tools-import-section-title">选择文件夹或文件</div>'
+      + '<div class="tools-import-drop">'
+      + '<div class="tools-import-drop-icon">&#128193;</div>'
+      + '<div class="tools-import-drop-text">选择文件夹或 .json 文件，路径自动填入下方输入框</div>'
+      + '<div style="display:flex;gap:8px;justify-content:center">'
+      + '<button class="tools-file-btn" onclick="event.stopPropagation();toolsPickLinkFolder()">&#128193; 文件夹</button>'
+      + '<button class="tools-file-btn" onclick="event.stopPropagation();toolsPickLinkFile()">&#128196; 文件</button>'
+      + '</div></div>'
+      + '</div>'
+      + '<div class="tools-import-divider"><span>或</span></div>'
+      + '<div class="tools-import-section">'
+      + '<div class="tools-import-section-title">输入路径</div>'
+      + '<input type="text" class="tools-save-input" id="tools-link-path" placeholder="绝对路径，如 /path/to/data.json 或 /path/to/folder" autofocus style="margin-bottom:10px">'
+      + '<input type="text" class="tools-save-input" id="tools-link-label" placeholder="显示名（可选，默认取文件名）">'
+      + '</div>'
+      + '<div class="tools-save-actions" style="margin-top:14px">'
+      + '<button class="tools-save-cancel" onclick="toolsDismissLinkDialog()">取消</button>'
+      + '<button class="tools-save-confirm" onclick="toolsConfirmLink()">确认</button>'
+      + '</div></div>';
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) toolsDismissLinkDialog();
+    });
+    document.body.appendChild(overlay);
+  };
+
+  window.toolsConfirmLink = async function() {
+    var pathInput = document.getElementById('tools-link-path');
+    var labelInput = document.getElementById('tools-link-label');
+    if (!pathInput) return;
+    var path = pathInput.value.trim();
+    if (!path) { pathInput.focus(); toolsShowToast('请输入目标路径'); return; }
+    var label = labelInput ? labelInput.value.trim() : '';
+    try {
+      var body = { path: path };
+      if (label) body.label = label;
+      var res = await fetch('/api/tools/json-links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        var err = await res.json();
+        toolsShowToast('添加失败: ' + (err.error || 'Unknown'));
+        return;
+      }
+      toolsDismissLinkDialog();
+      toolsShowToast('已添加引用');
+      toolsLoadLinkList();
+    } catch (e) {
+      toolsShowToast('添加失败: ' + e.message);
+    }
+  };
+
+  window.toolsPickLinkFolder = function() {
+    pickNativePath('folder', function(p) {
+      document.getElementById('tools-link-path').value = p;
+      var name = p.replace(/\\/$/, '').split('/').pop();
+      document.getElementById('tools-link-label').value = name;
+    });
+  };
+  window.toolsPickLinkFile = function() {
+    pickNativePath('file', function(p) {
+      document.getElementById('tools-link-path').value = p;
+      var name = p.replace(/\\.json$/i, '').split('/').pop();
+      document.getElementById('tools-link-label').value = name;
+    });
+  };
+
+  window.toolsDismissLinkDialog = function() {
+    var overlay = document.getElementById('tools-link-overlay');
+    if (overlay) overlay.remove();
+  };
+
+  window.toolsRemoveLink = async function(id) {
+    if (!confirm('确定移除此引用？')) return;
+    try {
+      var res = await fetch('/api/tools/json-links/' + encodeURIComponent(id), { method: 'DELETE' });
+      if (!res.ok) {
+        var err = await res.json();
+        toolsShowToast('移除失败: ' + (err.error || 'Unknown'));
+        return;
+      }
+      toolsShowToast('已移除引用');
+      toolsLoadLinkList();
+    } catch (e) {
+      toolsShowToast('移除失败: ' + e.message);
+    }
+  };
+
+  // ── toolsSetEditable — toggle CodeMirror editable state ──
+  window.toolsSetEditable = function(editable) {
+    var S = cmGetSetup();
+    if (!_cmView) return;
+    if (_cmEditableComp && _cmEditableComp.reconfigure && S.EditorView) {
+      _cmView.dispatch({
+        effects: _cmEditableComp.reconfigure(S.EditorView.editable.of(!!editable)),
+      });
+    }
+  };
+
+  // ── toolsOpenLinkedFile — open a file-type link in read-only view ──
+  window.toolsOpenLinkedFile = async function(id) {
+    try {
+      var res = await fetch('/api/tools/json-links/' + encodeURIComponent(id) + '/content');
+      if (!res.ok) { toolsShowToast('加载失败'); return; }
+      var data = await res.json();
+      _activePath = data.path;
+      toolsSwitchSubtab('edit');
+      toolsSetEditable(false);
+      initCodeMirror();
+      cmSetDoc(data.content);
+      toolsShowLinkedReadonlyView(data.path, id);
+      toolsRenderLinkList();
+    } catch (e) {
+      toolsShowToast('加载失败: ' + e.message);
+    }
+  };
+
+  // ── toolsOpenLinkedFileByPath — open a tree file by absolute path ──
+  window.toolsOpenLinkedFileByPath = async function(absPath) {
+    try {
+      var res = await fetch('/api/tools/json-links/read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: absPath }),
+      });
+      if (!res.ok) { toolsShowToast('加载失败'); return; }
+      var data = await res.json();
+      _activePath = absPath;
+      toolsSwitchSubtab('edit');
+      toolsSetEditable(false);
+      initCodeMirror();
+      cmSetDoc(data.content);
+      toolsShowLinkedReadonlyView(absPath, null);
+      toolsRenderLinkList();
+    } catch (e) {
+      toolsShowToast('加载失败: ' + e.message);
+    }
+  };
+
+  // ── toolsToggleLinkFolder — expand/collapse top-level folder link ──
+  window.toolsToggleLinkFolder = async function(id) {
+    // Find the link to get its absolute path
+    var link = (_linkListCache || []).find(function(l) { return l.id === id; });
+    if (!link) return;
+    var dirPath = link.path;
+
+    if (_expandedDirs[dirPath]) {
+      // Collapse
+      delete _expandedDirs[dirPath];
+      toolsRenderLinkList();
+      return;
+    }
+    // Expand — fetch only if not cached
+    _expandedDirs[dirPath] = true;
+    _activePath = dirPath;
+    if (!_dirCache[dirPath]) {
+      try {
+        var res = await fetch('/api/tools/json-links/' + encodeURIComponent(id) + '/tree');
+        if (!res.ok) { toolsShowToast('加载目录失败'); delete _expandedDirs[dirPath]; toolsRenderLinkList(); return; }
+        var data = await res.json();
+        _dirCache[dirPath] = { nodes: data.tree || [], truncated: data.truncated };
+        if (data.truncated) {
+          toolsShowToast('目录较大，部分内容已截断');
+        }
+      } catch (e) {
+        toolsShowToast('加载目录失败'); delete _expandedDirs[dirPath]; toolsRenderLinkList(); return;
+      }
+    }
+    toolsRenderLinkList();
+  };
+
+  // ── toolsToggleTreeFolder — expand/collapse nested tree folder (lazy fetch) ──
+  window.toolsToggleTreeFolder = async function(linkId, dirPath) {
+    if (_expandedDirs[dirPath]) {
+      // Collapse
+      delete _expandedDirs[dirPath];
+      toolsRenderLinkTreeContainer(linkId);
+      return;
+    }
+    // Expand — fetch children on demand
+    _expandedDirs[dirPath] = true;
+    _activePath = dirPath;
+    if (!_dirCache[dirPath]) {
+      try {
+        var res = await fetch('/api/tools/json-links/expand-dir', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: dirPath }),
+        });
+        if (!res.ok) { toolsShowToast('加载目录失败'); delete _expandedDirs[dirPath]; toolsRenderLinkTreeContainer(linkId); return; }
+        var data = await res.json();
+        _dirCache[dirPath] = { nodes: data.nodes || [], truncated: data.truncated };
+        if (data.truncated) {
+          toolsShowToast('目录较大，部分内容已截断');
+        }
+      } catch (e) {
+        toolsShowToast('加载目录失败'); delete _expandedDirs[dirPath]; toolsRenderLinkTreeContainer(linkId); return;
+      }
+    }
+    toolsRenderLinkTreeContainer(linkId);
+  };
+
+  // ── toolsRenderLinkTreeContainer — render cached tree nodes for a top-level link ──
+  function toolsRenderLinkTreeContainer(linkId) {
+    var el = document.getElementById('tools-link-tree-' + linkId);
+    if (!el) return;
+    var link = (_linkListCache || []).find(function(l) { return l.id === linkId; });
+    if (!link) return;
+    var cached = _dirCache[link.path];
+    var nodes = cached ? cached.nodes : [];
+    el.innerHTML = toolsRenderTreeNodes(nodes, linkId);
+  }
+
+  // ── toolsRenderTreeNodes — recursive tree node rendering (children from _dirCache) ──
+  function toolsRenderTreeNodes(nodes, linkId) {
+    if (!nodes || nodes.length === 0) {
+      return '<div style="padding:4px 8px;color:var(--tools-muted,#888);font-size:12px;">（空目录）</div>';
+    }
+    return nodes.map(function(node) {
+      var isFolder = node.type === 'folder';
+      var icon = isFolder ? '\u{1F4C1}' : '\u{1F4C4}';
+      if (isFolder) {
+        var expanded = _expandedDirs[node.path];
+        var arrow = expanded ? '▾' : '▸';
+        var childrenHtml = '';
+        if (expanded) {
+          var cached = _dirCache[node.path];
+          var children = cached ? cached.nodes : [];
+          childrenHtml = '<div class="tools-link-tree">' + toolsRenderTreeNodes(children, linkId) + '</div>';
+        }
+        var activeClass = (_activePath === node.path) ? ' active' : '';
+        return '<div class="tools-link-tree-node">'
+          + '<div class="tools-link-row' + activeClass + '" onclick="event.stopPropagation();toolsToggleTreeFolder(\\'' + escAttr(linkId) + '\\',\\'' + escAttr(node.path) + '\\')">'
+          + '<span class="tools-link-arrow">' + arrow + '</span>'
+          + '<span class="tools-link-icon">' + icon + '</span>'
+          + '<span class="tools-link-label">' + escHtml(node.name) + '</span>'
+          + '</div>'
+          + childrenHtml
+          + '</div>';
+      } else {
+        // File node
+        var fileActiveClass = (_activePath === node.path) ? ' active' : '';
+        return '<div class="tools-link-tree-node">'
+          + '<div class="tools-link-row' + fileActiveClass + '" onclick="event.stopPropagation();toolsOpenLinkedFileByPath(\\'' + escAttr(node.path) + '\\')">'
+          + '<span class="tools-link-arrow" style="visibility:hidden">▸</span>'
+          + '<span class="tools-link-icon">' + icon + '</span>'
+          + '<span class="tools-link-label">' + escHtml(node.name) + '</span>'
+          + '</div>'
+          + '</div>';
+      }
+    }).join('');
+  }
+
+  // ── Readonly linked file bar ──
+  function toolsShowLinkedReadonlyView(path, linkId) {
+    _activeLinkedFile = { linkId: linkId, path: path };
+    var bar = document.getElementById('tools-linked-readonly-bar');
+    if (bar) {
+      bar.querySelector('.tools-linked-path').innerHTML = '🔗 ' + escHtml(path);
+      bar.style.display = '';
+    }
+    // Show Finder button only for file links (not tree files without linkId)
+    var revealBtn = document.getElementById('tools-btn-reveal');
+    if (revealBtn) revealBtn.style.display = linkId ? '' : 'none';
+  }
+
+  function toolsHideLinkedReadonlyBar() {
+    _activeLinkedFile = null;
+    var bar = document.getElementById('tools-linked-readonly-bar');
+    if (bar) bar.style.display = 'none';
+  }
+
+  // ── Readonly bar actions ──
+  window.toolsCopyLinked = async function() {
+    var val = cmGetDoc();
+    if (!val) return;
+    try {
+      await navigator.clipboard.writeText(val);
+      toolsShowToast('已复制全部内容');
+    } catch (e) {
+      toolsShowToast('复制失败');
+    }
+  };
+
+  window.toolsLoadLinkedToEditor = function() {
+    toolsSetEditable(true);
+    toolsHideLinkedReadonlyBar();
+  };
+
+  window.toolsRevealLinked = async function() {
+    if (!_activeLinkedFile || !_activeLinkedFile.linkId) {
+      toolsShowToast('无法定位文件');
+      return;
+    }
+    try {
+      var res = await fetch('/api/tools/json-links/' + encodeURIComponent(_activeLinkedFile.linkId) + '/reveal');
+      if (!res.ok) { toolsShowToast('打开失败'); return; }
+    } catch (e) {
+      toolsShowToast('打开失败');
+    }
+  };
+
+  window.toolsExitLinkedReadonly = function() {
+    toolsSetEditable(true);
+    toolsHideLinkedReadonlyBar();
+    _activePath = null;
+    toolsRenderLinkList();
+  };
+
   // ── Toast ──
   function toolsShowToast(msg) {
     var toast = document.createElement('div');
@@ -769,6 +1454,10 @@ export const TOOLS_JS = `
   // ── Expose init ──
   window.toolsInit = toolsInit;
   window.toolsHookSwitchModule = toolsHookSwitchModule;
+
+  // Self-init: called immediately so cx/cm templates (which use IIFE) work
+  toolsInit();
+  toolsHookSwitchModule();
 
 })();
 `

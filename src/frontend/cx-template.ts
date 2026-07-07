@@ -3,7 +3,7 @@
  * Three modules: Overview (default), History, and Stats.
  * Data comes from state_5.sqlite + session JSONL via /api/cx/* endpoints.
  */
-import { NOTES_CSS, NOTES_NAV_ITEM, NOTES_MODULE_HTML, NOTES_MODAL_HTML, NOTES_JS, NOTES_MARKED } from './notes-module.js'
+import { NOTES_CSS, NOTES_MODAL_HTML, NOTES_JS, NOTES_MARKED } from './notes-module.js'
 import { TOOLS_CSS, TOOLS_NAV_ITEM, TOOLS_MODULE_HTML, TOOLS_JS, CODEMIRROR_BUNDLE } from './tools-module.js'
 
 export const CX_HTML_TEMPLATE = `<!DOCTYPE html>
@@ -1001,7 +1001,6 @@ ${TOOLS_CSS}
       <div class="nav-item-label">&#35745;&#21010;</div>
       <div class="nav-tooltip">&#35745;&#21010;&#25991;&#20214;</div>
     </div>
-${NOTES_NAV_ITEM}
 ${TOOLS_NAV_ITEM}
 
     <div class="nav-spacer"></div>
@@ -1160,7 +1159,6 @@ ${TOOLS_NAV_ITEM}
           </div>
         </div>
       </div>
-${NOTES_MODULE_HTML}
 ${TOOLS_MODULE_HTML}
     </div>
   </div>
@@ -1248,7 +1246,7 @@ function unixMs(ts) {
 }
 
 // ── Hash State ──
-const VALID_MODULES = ['overview', 'history', 'stats', 'plans', 'notes', 'tools'];
+const VALID_MODULES = ['overview', 'history', 'stats', 'plans', 'tools'];
 function parseHash() {
   const raw = location.hash.replace(/^#/, '');
   if (!raw) return { module: 'overview', params: {} };
@@ -1337,9 +1335,6 @@ function switchModule(id, pushHash) {
     document.getElementById('topbar-title').textContent = '计划';
     updatePlansTopbar();
     if (!S.plans.data) loadPlans(); else renderPlansList();
-  } else if (id === 'notes') {
-    document.getElementById('topbar-title').textContent = '\u7b14\u8bb0';
-    document.getElementById('topbar-stats').innerHTML = '';
   } else if (id === 'tools') {
     document.getElementById('topbar-title').textContent = '\u5de5\u5177\u7bb1';
     document.getElementById('topbar-stats').innerHTML = '';
@@ -2384,28 +2379,10 @@ function restoreStateFromHash(module, params) {
     if (params.plan) {
       S.plans.selectedPlan = params.plan;
     }
-  } else if (module === 'notes') {
-    if (params.tab) {
-      window._pendingNotesTab = params.tab;
-    }
-    if (params.note) {
-      window._pendingNoteSelect = params.note;
-    }
-    if (params.link) {
-      window._pendingLinkSelect = params.link;
-    }
-    if (params.file) {
-      window._pendingFileSelect = params.file;
-    }
   }
 }
 (function init() {
   initModeDropdown();
-  // Notes init must run before switchModule so the hook is in place
-  notesInit();
-  notesHookSwitchModule();
-  toolsInit();
-  toolsHookSwitchModule();
 
   // ── Panel init ──
   initPanelCollapse(document.querySelector('.project-panel'), 'project');
@@ -2442,6 +2419,16 @@ function restoreStateFromHash(module, params) {
     }
   });
 })();
+// ── 通用原生文件选择器（供笔记/JSON模块复用） ──
+function pickNativePath(type, callback) {
+  fetch('/api/pick-path', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: type })
+  }).then(function(r) { return r.json(); }).then(function(data) {
+    if (data.path && callback) callback(data.path);
+  }).catch(function() {});
+}
 ${NOTES_JS}
 ${TOOLS_JS}
 </script>
