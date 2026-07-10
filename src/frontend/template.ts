@@ -4076,8 +4076,8 @@ function restoreStateFromHash(module, params) {
 window.addEventListener('hashchange', () => {
   const { module, params } = parseHash();
   if (module !== S.activeModule) {
-    switchModule(module, false);
     restoreStateFromHash(module, params);
+    switchModule(module, false);
   }
 });
 window.addEventListener('load', () => {
@@ -4101,7 +4101,9 @@ window.addEventListener('load', () => {
   initPanelResize(document.querySelector('.plans-list-panel'), 'plans', 120, 500);
 
   const { module, params } = parseHash();
-  // Restore stats tab BEFORE switchModule so it loads the correct data
+  // Restore state BEFORE switchModule so hooks can use pending params
+  // (stats.activeTab, tools._pendingToolSelect, history.pendingSessionId, etc.)
+  restoreStateFromHash(module, params);
   if (module === 'stats' && params.tab) {
     S.stats.activeTab = params.tab;
   }
@@ -4112,7 +4114,6 @@ window.addEventListener('load', () => {
     loadOverview();
     switchModule(module, false);
   }
-  restoreStateFromHash(module, params);
   initModeDropdown();
 
   // ── Keyboard shortcuts ──

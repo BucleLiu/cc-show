@@ -1349,23 +1349,21 @@ function goToSession(id, tokensUsed, title) {
 }
 
 // ── Theme ──
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('ccs-cx-theme', theme);
+  var isDark = theme === 'dark';
+  document.getElementById('theme-icon').textContent = isDark ? '☾' : '☀';
+  document.getElementById('theme-label').textContent = isDark ? '深色' : '浅色';
+  document.getElementById('theme-tooltip').textContent = isDark ? '切换浅色' : '切换深色';
+}
 function toggleTheme() {
-  const html = document.documentElement;
-  const dark = html.dataset.theme === 'dark';
-  html.dataset.theme = dark ? 'light' : 'dark';
-  localStorage.setItem('ccs-cx-theme', html.dataset.theme);
-  document.getElementById('theme-icon').textContent = dark ? '☀' : '☾';
-  document.getElementById('theme-label').textContent = dark ? '浅色' : '深色';
-  document.getElementById('theme-tooltip').textContent = dark ? '切换深色' : '切换浅色';
+  var current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
 }
 (function initTheme() {
-  const saved = localStorage.getItem('ccs-cx-theme');
-  if (saved === 'dark') {
-    document.documentElement.dataset.theme = 'dark';
-    document.getElementById('theme-icon').textContent = '☾';
-    document.getElementById('theme-label').textContent = '深色';
-    document.getElementById('theme-tooltip').textContent = '切换浅色';
-  }
+  var saved = localStorage.getItem('ccs-cx-theme');
+  applyTheme(saved === 'dark' ? 'dark' : 'light');
 })();
 
 // ── Panel Resize ──
@@ -2372,16 +2370,58 @@ function restoreStateFromHash(module, params) {
       if (!S.history.data) loadHistory();
     }
   } else if (module === 'stats') {
+    if (params.tab) {
+      S.stats.activeTab = params.tab;
+      document.querySelectorAll('.stats-tab').forEach(function(el) {
+        el.classList.toggle('active', el.dataset.tab === params.tab);
+      });
+      var tokenPanel = document.getElementById('stats-token-panel');
+      var skillPanel = document.getElementById('stats-skill-panel');
+      if (tokenPanel) tokenPanel.style.display = params.tab === 'tokens' ? 'flex' : 'none';
+      if (skillPanel) skillPanel.style.display = params.tab === 'skills' ? 'flex' : 'none';
+    }
     if (params.project) {
       S.stats.selectedProject = params.project;
+    }
+    if (params.skill) {
+      S.stats.selectedSkill = params.skill;
     }
   } else if (module === 'plans') {
     if (params.plan) {
       S.plans.selectedPlan = params.plan;
     }
+  } else if (module === 'tools') {
+    if (params.tool) {
+      window._pendingToolSelect = params.tool;
+    }
+    if (params.note) {
+      window._pendingNoteSelect = params.note;
+    }
+    if (params.link) {
+      window._pendingLinkSelect = params.link;
+    }
+    if (params.file) {
+      window._pendingFileSelect = params.file;
+    }
+    if (params.tab) {
+      window._pendingNotesTab = params.tab;
+    }
+  } else if (module === 'notes') {
+    if (params.note) {
+      window._pendingNoteSelect = params.note;
+    }
+    if (params.link) {
+      window._pendingLinkSelect = params.link;
+    }
+    if (params.file) {
+      window._pendingFileSelect = params.file;
+    }
+    if (params.tab) {
+      window._pendingNotesTab = params.tab;
+    }
   }
 }
-(function init() {
+window.addEventListener('load', () => {
   initModeDropdown();
 
   // ── Panel init ──
@@ -2394,14 +2434,19 @@ function restoreStateFromHash(module, params) {
   initPanelResize(document.querySelector('.stats-list-panel'), 'stats', 120, 500);
   initPanelResize(document.querySelector('.plans-list-panel'), 'plans', 120, 500);
 
+  // Initialize tools module (hooked into switchModule)
+  toolsInit();
+  toolsHookSwitchModule();
+
   const { module, params } = parseHash();
-  switchModule(module, false);
+  // Restore state BEFORE switchModule so hooks can use pending params
   restoreStateFromHash(module, params);
+  switchModule(module, false);
   window.addEventListener('hashchange', () => {
     const { module: m, params: p } = parseHash();
     if (m !== S.activeModule) {
-      switchModule(m, false);
       restoreStateFromHash(m, p);
+      switchModule(m, false);
     }
   });
   document.addEventListener('keydown', e => {
@@ -2418,7 +2463,7 @@ function restoreStateFromHash(module, params) {
       }
     }
   });
-})();
+});
 // ── 通用原生文件选择器（供笔记/JSON模块复用） ──
 function pickNativePath(type, callback) {
   fetch('/api/pick-path', {
