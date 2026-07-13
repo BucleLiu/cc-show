@@ -1011,7 +1011,8 @@ function notesShowLinkPreview(title, path, content, linkId) {
   var status = document.getElementById('notes-save-status');
   if (status) status.innerHTML = '&#128279; 引用 · 只读';
   // 渲染预览
-  notesUpdatePreview(content);
+  var baseDir = path ? path.substring(0, path.lastIndexOf('/')) : null;
+  notesUpdatePreview(content, baseDir);
   notesUpdateWordCount(content);
   // 记录当前 linkId 供 reveal 用
   inner.setAttribute('data-link-id', linkId || '');
@@ -1259,7 +1260,7 @@ function notesCopyPath() {
     if (copied) { copied.classList.add('show'); setTimeout(function() { copied.classList.remove('show'); }, 1500); }
   }).catch(function() {});
 }
-function notesUpdatePreview(content) {
+function notesUpdatePreview(content, baseDir) {
   var pane = document.getElementById('notes-preview-pane');
   if (!pane) return;
   try {
@@ -1267,7 +1268,23 @@ function notesUpdatePreview(content) {
   } catch(e) {
     pane.textContent = content || '';
   }
+  if (baseDir) notesRewriteLocalImages(pane, baseDir);
   notesBuildPreviewNav(pane);
+}
+function notesRewriteLocalImages(pane, baseDir) {
+  // Skip if baseDir is not an absolute path
+  if (!baseDir || baseDir[0] !== '/') return;
+  var imgs = Array.from(pane.querySelectorAll('img'));
+  imgs.forEach(function(img) {
+    var src = img.getAttribute('src');
+    if (!src) return;
+    // Skip absolute URLs, data URIs, and already-rewritten API paths
+    if (/^(https?:|data:|file:|[/]{2}|\\/api\\/)/i.test(src)) return;
+    // Decode URL-encoded characters (e.g. %20 → space) for filesystem path resolution
+    var decoded = src;
+    try { decoded = decodeURIComponent(src); } catch(_) { /* keep original */ }
+    img.src = '/api/notes/file?base=' + encodeURIComponent(baseDir) + '&rel=' + encodeURIComponent(decoded);
+  });
 }
 function notesBuildPreviewNav(pane) {
   var shell = document.getElementById('notes-preview-shell');

@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { URL } from 'node:url'
+import { existsSync, readFileSync, statSync } from 'node:fs'
+import { extname, resolve } from 'node:path'
 import { loadHistory, loadSessionConversation, searchSessionsByContent } from '../data/history.js'
 import { loadPlans } from '../data/plans.js'
 import { loadLatestStats, computeStats } from '../data/stats.js'
@@ -66,6 +68,23 @@ import {
 } from '../data/tools.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function mimeFromExt(ext: string): string {
+  const map: Record<string, string> = {
+    '.png':  'image/png',
+    '.jpg':  'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif':  'image/gif',
+    '.svg':  'image/svg+xml',
+    '.webp': 'image/webp',
+    '.bmp':  'image/bmp',
+    '.ico':  'image/x-icon',
+    '.mp4':  'video/mp4',
+    '.webm': 'video/webm',
+    '.pdf':  'application/pdf',
+  }
+  return map[ext] ?? 'application/octet-stream'
+}
 
 function sendJson(res: ServerResponse, data: unknown): void {
   const body = Buffer.from(JSON.stringify(data), 'utf-8')
@@ -352,6 +371,45 @@ export async function handleRequest(
       if (path === '/api/notes') {
         try {
           return sendJson(res, listNotes())
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(err) }))
+          return
+        }
+      }
+
+      // GET /api/notes/file — serve static files from linked note directories
+      // MUST be before /api/notes/:id to avoid being captured as an id param
+      if (path === '/api/notes/file') {
+        const base = url.searchParams.get('base') ?? ''
+        const rel = url.searchParams.get('rel') ?? ''
+        if (!base || !rel) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'base and rel are required' }))
+          return
+        }
+        try {
+          const resolved = resolve(base, rel)
+          // Path traversal protection: resolved must be under base directory
+          if (!resolved.startsWith(base.endsWith('/') ? base : base + '/')) {
+            res.writeHead(403, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Path traversal denied' }))
+            return
+          }
+          if (!existsSync(resolved) || !statSync(resolved).isFile()) {
+            res.writeHead(404, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'File not found' }))
+            return
+          }
+          const buf = readFileSync(resolved)
+          const mime = mimeFromExt(extname(resolved).toLowerCase())
+          res.writeHead(200, {
+            'Content-Type': mime,
+            'Content-Length': buf.length,
+            'Cache-Control': 'public, max-age=3600',
+          })
+          res.end(buf)
+          return
         } catch (err) {
           res.writeHead(500, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: String(err) }))
