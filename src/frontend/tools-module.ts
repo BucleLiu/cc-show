@@ -371,6 +371,31 @@ export const TOOLS_CSS = `
 .tools-linked-path { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12px; color:var(--tools-muted,#888); min-width:200px; }
 .tools-linked-actions { display:flex; gap:6px; flex-wrap:wrap; }
 .tools-link-tree-node .tools-link-row { padding:4px 8px; }
+
+/* ── File Preview ── */
+.fp-preview-bar {
+  display:flex; align-items:center; gap:8px; padding:8px 12px;
+  background:var(--bg-surface); border-bottom:1px solid var(--border-sub);
+  flex-shrink:0; flex-wrap:wrap;
+}
+.fp-preview-path {
+  flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-size:12px; color:var(--text-muted); min-width:150px; font-family:monospace;
+}
+.fp-preview-content { flex:1; overflow:auto; }
+.fp-img-wrap { display:flex; align-items:flex-start; justify-content:center; padding:16px; }
+.fp-img-wrap img { max-width:100%; height:auto; border-radius:4px; }
+.fp-unsupported {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  flex:1; gap:12px; color:var(--text-muted);
+}
+.fp-unsupported-icon { font-size:48px; opacity:0.3; }
+.fp-unsupported-text { font-size:14px; }
+.fp-unsupported-name { font-size:12px; font-family:monospace; color:var(--text-sec); }
+.fp-loading {
+  display:flex; align-items:center; justify-content:center; flex:1;
+  color:var(--text-muted); font-size:13px;
+}
 `
 
 // ── 2. Nav item (wrench icon SVG) ──────────────────────────────────────────────
@@ -441,6 +466,8 @@ export const TOOLS_JS = `
 
   var ICON_OPEN = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>';
 
+  var ICON_EYE = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+
   // ── Tool registry (extensible — add entries here for new tools) ──
   var TOOLS = [];
   if (window.CCS_NOTE) {
@@ -456,6 +483,12 @@ export const TOOLS_JS = `
     icon: ICON_JSON,
     name: 'JSON 格式化',
     desc: '编辑、格式化、压缩 JSON',
+  });
+  TOOLS.push({
+    id: 'file-preview',
+    icon: ICON_EYE,
+    name: '文件预览',
+    desc: '浏览本地文件，Markdown、JSON、代码、图片',
   });
   // Future tools: add entries here
 
@@ -475,6 +508,13 @@ export const TOOLS_JS = `
   var _dirCache = {};
   // 展开状态：absPath → true
   var _expandedDirs = {};
+
+  // ── File Preview state ──
+  var _fpLinks = null;
+  var _fpActivePath = null;
+  var _fpExpandedDirs = {};
+  var _fpDirCache = {};
+  var _fpActiveFile = null;
 
   // ── Init ──
   function toolsInit() {
@@ -563,6 +603,9 @@ export const TOOLS_JS = `
     } else if (toolId === 'json-format') {
       renderJsonFormatWorkarea(innerEl);
       initCodeMirror();
+    } else if (toolId === 'file-preview') {
+      fpRenderSplitLayout(innerEl);
+      fpLoadLinks();
     }
     if (!silent) updateHash({ tool: toolId });
   };
@@ -1450,6 +1493,405 @@ export const TOOLS_JS = `
   function escHtml(s) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // File Preview
+  // ═══════════════════════════════════════════════════════════════════════
+
+  function fpRenderSplitLayout(container) {
+    container.innerHTML = ''
+      + '<div style="display:flex;flex:1;overflow:hidden">'
+      + '<div style="width:240px;background:var(--bg-surface);border-right:1px solid var(--border-sub);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden">'
+      + '<div style="display:flex;align-items:center;gap:6px;padding:8px 10px 6px;border-bottom:1px solid var(--border-sub);flex-shrink:0">'
+      + '<span style="font-size:12px;font-weight:700;color:var(--text-pri);flex:1">文件列表</span>'
+      + '<button class="tools-btn primary" onclick="fpShowLinkDialog()" style="padding:0 8px;font-size:11px">+ 添加</button>'
+      + '</div>'
+      + '<div style="flex:1;overflow-y:auto;padding:4px" id="fp-link-list"></div>'
+      + '</div>'
+      + '<div style="flex:1;display:flex;flex-direction:column;overflow:hidden">'
+      + '<div class="fp-preview-bar" id="fp-preview-bar" style="display:none">'
+      + '<span class="fp-preview-path" id="fp-preview-path"></span>'
+      + '<span class="tools-linked-actions">'
+      + '<button class="tools-btn" onclick="fpCopyContent()">复制全部</button>'
+      + '<button class="tools-btn" id="fp-btn-reveal" onclick="fpRevealFile()">在 Finder 中显示</button>'
+      + '</span></div>'
+      + '<div class="fp-preview-content" id="fp-preview-content" style="flex:1;overflow:auto">'
+      + '<div class="fp-loading">请从左侧选择一个文件预览</div>'
+      + '</div>'
+      + '</div>'
+      + '</div>';
+  }
+
+  // ── File Preview Link List ──
+
+  async function fpLoadLinks() {
+    var listEl = document.getElementById('fp-link-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div class="tools-saved-empty"><div>' + ICON_FOLDER + '</div><div>加载中...</div></div>';
+    try {
+      var res = await fetch('/api/tools/file-links');
+      if (!res.ok) throw new Error('Failed');
+      var data = await res.json();
+      _fpLinks = data.links || [];
+      if (data.removed > 0) toolsShowToast(data.removed + ' 个失效引用已自动清理');
+      fpRenderLinkList();
+    } catch (e) {
+      listEl.innerHTML = '<div class="tools-saved-empty"><div>' + ICON_FOLDER + '</div><div>加载引用列表失败</div></div>';
+    }
+  }
+
+  function fpRenderLinkList() {
+    var listEl = document.getElementById('fp-link-list');
+    if (!listEl) return;
+    var links = _fpLinks;
+    if (!links || links.length === 0) {
+      listEl.innerHTML = '<div class="tools-saved-empty"><div>' + ICON_FOLDER + '</div><div>暂无引用<br><span style="font-size:11px;color:var(--text-muted)">点击"+ 添加"选择文件夹或文件</span></div></div>';
+      return;
+    }
+    listEl.innerHTML = links.map(function(link) {
+      var isFolder = link.type === 'folder';
+      var icon = isFolder ? '\u{1F4C1}' : '\u{1F4C4}';
+      var arrowHtml = '';
+      var treeHtml = '';
+      if (isFolder) {
+        var expanded = _fpExpandedDirs[link.path];
+        arrowHtml = '<span class="tools-link-arrow" onclick="event.stopPropagation();fpToggleLinkFolder(\\'' + escAttr(link.id) + '\\')">' + (expanded ? '▾' : '▸') + '</span>';
+        if (expanded) treeHtml = '<div class="tools-link-tree" id="fp-link-tree-' + link.id + '"></div>';
+      }
+      var activeClass = (_fpActivePath === link.path) ? ' active' : '';
+      var rowClick = isFolder
+        ? 'fpToggleLinkFolder(\\'' + escAttr(link.id) + '\\')'
+        : 'fpOpenLinkedFile(\\'' + escAttr(link.id) + '\\')';
+      return '<div class="tools-link-tree-node">'
+        + '<div class="tools-link-row' + activeClass + '" onclick="' + rowClick + '">'
+        + arrowHtml
+        + '<span class="tools-link-icon">' + icon + '</span>'
+        + '<span class="tools-link-label">' + escHtml(link.label) + '</span>'
+        + '<button class="tools-saved-item-del" title="移除引用" onclick="event.stopPropagation();fpRemoveLink(\\'' + escAttr(link.id) + '\\')">&times;</button>'
+        + '</div>'
+        + treeHtml
+        + '</div>';
+    }).join('');
+    links.forEach(function(link) {
+      if (link.type === 'folder' && _fpExpandedDirs[link.path]) fpRenderLinkTreeContainer(link.id);
+    });
+  }
+
+  // ── Folder toggle ──
+
+  window.fpToggleLinkFolder = async function(id) {
+    var link = (_fpLinks || []).find(function(l) { return l.id === id; });
+    if (!link) return;
+    var dirPath = link.path;
+    if (_fpExpandedDirs[dirPath]) { delete _fpExpandedDirs[dirPath]; fpRenderLinkList(); return; }
+    _fpExpandedDirs[dirPath] = true;
+    _fpActivePath = dirPath;
+    if (!_fpDirCache[dirPath]) {
+      try {
+        var res = await fetch('/api/tools/file-links/' + encodeURIComponent(id) + '/tree');
+        if (!res.ok) { toolsShowToast('加载目录失败'); delete _fpExpandedDirs[dirPath]; fpRenderLinkList(); return; }
+        var data = await res.json();
+        _fpDirCache[dirPath] = { nodes: data.tree || [], truncated: data.truncated };
+        if (data.truncated) toolsShowToast('目录较大，部分内容已截断');
+      } catch (e) { toolsShowToast('加载目录失败'); delete _fpExpandedDirs[dirPath]; fpRenderLinkList(); return; }
+    }
+    fpRenderLinkList();
+  };
+
+  window.fpToggleTreeFolder = async function(linkId, dirPath) {
+    if (_fpExpandedDirs[dirPath]) { delete _fpExpandedDirs[dirPath]; fpRenderLinkTreeContainer(linkId); return; }
+    _fpExpandedDirs[dirPath] = true;
+    _fpActivePath = dirPath;
+    if (!_fpDirCache[dirPath]) {
+      try {
+        var res = await fetch('/api/tools/file-links/expand-dir', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: dirPath }),
+        });
+        if (!res.ok) { toolsShowToast('加载目录失败'); delete _fpExpandedDirs[dirPath]; fpRenderLinkTreeContainer(linkId); return; }
+        var data = await res.json();
+        _fpDirCache[dirPath] = { nodes: data.nodes || [], truncated: data.truncated };
+        if (data.truncated) toolsShowToast('目录较大，部分内容已截断');
+      } catch (e) { toolsShowToast('加载目录失败'); delete _fpExpandedDirs[dirPath]; fpRenderLinkTreeContainer(linkId); return; }
+    }
+    fpRenderLinkTreeContainer(linkId);
+  };
+
+  function fpRenderLinkTreeContainer(linkId) {
+    var el = document.getElementById('fp-link-tree-' + linkId);
+    if (!el) return;
+    var link = (_fpLinks || []).find(function(l) { return l.id === linkId; });
+    if (!link) return;
+    var cached = _fpDirCache[link.path];
+    var nodes = cached ? cached.nodes : [];
+    el.innerHTML = fpRenderTreeNodes(nodes, linkId);
+  }
+
+  function fpRenderTreeNodes(nodes, linkId) {
+    if (!nodes || nodes.length === 0) return '<div style="padding:4px 8px;color:var(--text-muted,#888);font-size:12px;">（空目录）</div>';
+    return nodes.map(function(node) {
+      var isFolder = node.type === 'folder';
+      var icon = isFolder ? '\u{1F4C1}' : '\u{1F4C4}';
+      if (isFolder) {
+        var expanded = _fpExpandedDirs[node.path];
+        var arrow = expanded ? '▾' : '▸';
+        var childrenHtml = '';
+        if (expanded) { var cached = _fpDirCache[node.path]; var children = cached ? cached.nodes : []; childrenHtml = '<div class="tools-link-tree">' + fpRenderTreeNodes(children, linkId) + '</div>'; }
+        return '<div class="tools-link-tree-node">'
+          + '<div class="tools-link-row' + (_fpActivePath === node.path ? ' active' : '') + '" onclick="event.stopPropagation();fpToggleTreeFolder(\\'' + escAttr(linkId) + '\\',\\'' + escAttr(node.path) + '\\')">'
+          + '<span class="tools-link-arrow">' + arrow + '</span>'
+          + '<span class="tools-link-icon">' + icon + '</span>'
+          + '<span class="tools-link-label">' + escHtml(node.name) + '</span>'
+          + '</div>' + childrenHtml + '</div>';
+      } else {
+        return '<div class="tools-link-tree-node">'
+          + '<div class="tools-link-row' + (_fpActivePath === node.path ? ' active' : '') + '" onclick="event.stopPropagation();fpOpenLinkedFileByPath(\\'' + escAttr(node.path) + '\\')">'
+          + '<span class="tools-link-arrow" style="visibility:hidden">▸</span>'
+          + '<span class="tools-link-icon">' + icon + '</span>'
+          + '<span class="tools-link-label">' + escHtml(node.name) + '</span>'
+          + '</div></div>';
+      }
+    }).join('');
+  }
+
+  // ── Add link dialog ──
+
+  window.fpShowLinkDialog = function() {
+    var overlay = document.createElement('div');
+    overlay.className = 'tools-save-overlay';
+    overlay.id = 'fp-link-overlay';
+    overlay.innerHTML = '<div class="tools-save-dialog" style="width:420px">'
+      + '<h3>添加文件夹或文件</h3>'
+      + '<div class="tools-import-section">'
+      + '<div class="tools-import-section-title">选择文件夹或文件</div>'
+      + '<div class="tools-import-drop">'
+      + '<div class="tools-import-drop-icon">&#128193;</div>'
+      + '<div class="tools-import-drop-text">选择文件夹或任意文件</div>'
+      + '<div style="display:flex;gap:8px;justify-content:center">'
+      + '<button class="tools-file-btn" onclick="event.stopPropagation();fpPickFolder()">&#128193; 文件夹</button>'
+      + '<button class="tools-file-btn" onclick="event.stopPropagation();fpPickFile()">&#128196; 文件</button>'
+      + '</div></div></div>'
+      + '<div class="tools-import-divider"><span>或</span></div>'
+      + '<div class="tools-import-section">'
+      + '<div class="tools-import-section-title">手动输入路径</div>'
+      + '<input type="text" class="tools-save-input" id="fp-link-path" placeholder="绝对路径，如 /path/to/folder" autofocus style="margin-bottom:10px">'
+      + '<input type="text" class="tools-save-input" id="fp-link-label" placeholder="显示名（可选，默认取文件名）">'
+      + '</div>'
+      + '<div class="tools-save-actions" style="margin-top:14px">'
+      + '<button class="tools-save-cancel" onclick="fpDismissLinkDialog()">取消</button>'
+      + '<button class="tools-save-confirm" onclick="fpConfirmLink()">确认</button>'
+      + '</div></div>';
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) fpDismissLinkDialog(); });
+    document.body.appendChild(overlay);
+  };
+
+  window.fpConfirmLink = async function() {
+    var pathInput = document.getElementById('fp-link-path');
+    var labelInput = document.getElementById('fp-link-label');
+    if (!pathInput) return;
+    var path = pathInput.value.trim();
+    if (!path) { pathInput.focus(); toolsShowToast('请输入目标路径'); return; }
+    var label = labelInput ? labelInput.value.trim() : '';
+    try {
+      var body = { path: path }; if (label) body.label = label;
+      var res = await fetch('/api/tools/file-links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!res.ok) { var err = await res.json(); toolsShowToast('添加失败: ' + (err.error || 'Unknown')); return; }
+      fpDismissLinkDialog();
+      toolsShowToast('已添加引用');
+      fpLoadLinks();
+    } catch (e) { toolsShowToast('添加失败: ' + e.message); }
+  };
+
+  window.fpPickFolder = function() {
+    pickNativePath('folder', function(p) {
+      document.getElementById('fp-link-path').value = p;
+      document.getElementById('fp-link-label').value = p.replace(/\\/$/, '').split('/').pop();
+    });
+  };
+  window.fpPickFile = function() {
+    pickNativePath('file', function(p) {
+      document.getElementById('fp-link-path').value = p;
+      document.getElementById('fp-link-label').value = p.split('/').pop();
+    });
+  };
+  window.fpDismissLinkDialog = function() { var o = document.getElementById('fp-link-overlay'); if (o) o.remove(); };
+  window.fpRemoveLink = async function(id) {
+    if (!confirm('确定移除此引用？')) return;
+    try {
+      var res = await fetch('/api/tools/file-links/' + encodeURIComponent(id), { method: 'DELETE' });
+      if (!res.ok) { var err = await res.json(); toolsShowToast('移除失败: ' + (err.error || 'Unknown')); return; }
+      toolsShowToast('已移除引用'); fpLoadLinks();
+    } catch (e) { toolsShowToast('移除失败: ' + e.message); }
+  };
+
+  // ── Open linked file ──
+
+  window.fpOpenLinkedFile = async function(id) {
+    try {
+      var res = await fetch('/api/tools/file-links/' + encodeURIComponent(id) + '/content');
+      if (!res.ok) { toolsShowToast('加载失败'); return; }
+      var data = await res.json();
+      _fpActivePath = data.path;
+      _fpActiveFile = { path: data.path, linkId: id };
+      fpRenderPreview(data.ext, data.content, data.path, fpDirname(data.path));
+      fpShowLinkedReadonlyBar(data.path, id);
+      fpRenderLinkList();
+    } catch (e) { toolsShowToast('加载失败: ' + e.message); }
+  };
+
+  window.fpOpenLinkedFileByPath = async function(absPath) {
+    try {
+      var res = await fetch('/api/tools/file-links/read', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: absPath }) });
+      if (!res.ok) { toolsShowToast('加载失败'); return; }
+      var data = await res.json();
+      _fpActivePath = absPath;
+      _fpActiveFile = { path: absPath, linkId: null };
+      fpRenderPreview(data.ext, data.content, data.path, fpDirname(data.path));
+      fpShowLinkedReadonlyBar(absPath, null);
+      fpRenderLinkList();
+    } catch (e) { toolsShowToast('加载失败: ' + e.message); }
+  };
+
+  // ── Preview dispatch ──
+
+  var _fpPreviewContent = '';
+
+  function fpRenderPreview(ext, content, path, baseDir) {
+    var area = document.getElementById('fp-preview-content');
+    if (!area) return;
+    _fpPreviewContent = content || '';
+
+    // Markdown
+    if (ext === '.md' || ext === '.markdown') {
+      area.className = 'fp-preview-content';
+      try {
+        area.innerHTML = '<div class="notes-preview-pane">' + (window.marked ? marked.parse(content || '') : escHtml(content || '')) + '</div>';
+      } catch(e) { area.innerHTML = '<div class="notes-preview-pane">' + escHtml(content || '') + '</div>'; }
+      if (baseDir) { var pane = area.querySelector('.notes-preview-pane'); if (pane) fpRewriteLocalImages(pane, baseDir); }
+      return;
+    }
+
+    // Images
+    var imgExts = ['.png','.jpg','.jpeg','.gif','.svg','.webp','.bmp','.ico'];
+    if (imgExts.includes(ext)) {
+      area.className = 'fp-preview-content';
+      var imgSrc = '/api/notes/file?base=' + encodeURIComponent(baseDir || fpDirname(path)) + '&rel=' + encodeURIComponent(path.split('/').pop());
+      area.innerHTML = '<div class="fp-img-wrap"><img src="' + imgSrc + '" alt="' + escHtml(path) + '" id="fp-img-preview"></div>';
+      var img = document.getElementById('fp-img-preview');
+      if (img) {
+        img.onerror = function() {
+          this.parentElement.innerHTML = '<div class="fp-unsupported"><div class="fp-unsupported-icon">🖼</div><div class="fp-unsupported-text">图片加载失败</div></div>';
+        };
+      }
+      return;
+    }
+
+    // Unsupported binary
+    if (content === '' && ext) {
+      area.className = 'fp-preview-content';
+      area.innerHTML = '<div class="fp-unsupported"><div class="fp-unsupported-icon">📄</div><div class="fp-unsupported-text">不支持预览此文件类型</div><div class="fp-unsupported-name">' + escHtml(path) + '</div><button class="tools-btn" onclick="fpRevealFile()" style="margin-top:8px">📁 在 Finder 中显示</button></div>';
+      return;
+    }
+
+    // JSON — CodeMirror readonly with JSON syntax
+    if (ext === '.json' || ext === '.jsonc') {
+      area.className = 'fp-preview-content';
+      area.innerHTML = '<div class="tools-cm-wrap" id="fp-cm-wrap" style="flex:1;height:100%"></div>';
+      fpInitCodeMirror(true);
+      fpCmSetDoc(content || '');
+      return;
+    }
+
+    // All other text — CodeMirror readonly plain text
+    area.className = 'fp-preview-content';
+    area.innerHTML = '<div class="tools-cm-wrap" id="fp-cm-wrap" style="flex:1;height:100%"></div>';
+    fpInitCodeMirror(false);
+    fpCmSetDoc(content || '');
+  }
+
+  function fpRewriteLocalImages(pane, baseDir) {
+    if (!baseDir || baseDir[0] !== '/') return;
+    var imgs = Array.from(pane.querySelectorAll('img'));
+    imgs.forEach(function(img) {
+      var src = img.getAttribute('src');
+      if (!src) return;
+      if (/^(https?:|data:|file:|[/]{2}|\\/api\\/)/i.test(src)) return;
+      var decoded = src; try { decoded = decodeURIComponent(src); } catch(_) {}
+      img.src = '/api/notes/file?base=' + encodeURIComponent(baseDir) + '&rel=' + encodeURIComponent(decoded);
+    });
+  }
+
+  function fpDirname(p) { var i = p.lastIndexOf('/'); return i >= 0 ? p.slice(0, i) : p; }
+
+  // ── File Preview CodeMirror ──
+
+  var _fpCmView = null;
+  var _fpCmThemeComp = null;
+
+  function fpInitCodeMirror(jsonMode) {
+    var S = cmGetSetup();
+    if (!S.EditorView) return;
+    var container = document.getElementById('fp-cm-wrap');
+    if (!container) return;
+    if (_fpCmView) {
+      if (_fpCmView.dom.parentNode !== container) { _fpCmView.destroy(); _fpCmView = null; _fpCmThemeComp = null; }
+      else { _fpCmView.requestMeasure(); return; }
+    }
+    _fpCmThemeComp = S.Compartment ? new S.Compartment : { of: function() { return []; } };
+    var exts = [
+      S.lineNumbers ? S.lineNumbers() : null,
+      S.foldGutter ? S.foldGutter() : null,
+      S.highlightActiveLine ? S.highlightActiveLine() : null,
+      S.syntaxHighlighting ? S.syntaxHighlighting(S.defaultHighlightStyle) : null,
+      S.search ? S.search({ top: true }) : null,
+      S.keymap ? S.keymap.of([(S.defaultKeymap || []), (S.historyKeymap || []), (S.foldKeymap || []), (S.searchKeymap || [])].flat()) : null,
+      _fpCmThemeComp.of(fpCmThemeExtension()),
+      S.EditorView.editable.of(false),
+    ];
+    if (jsonMode && S.json) exts.push(S.json());
+    _fpCmView = new S.EditorView({ doc: '', extensions: exts.filter(Boolean), parent: container });
+  }
+
+  function fpCmThemeExtension() {
+    var S = cmGetSetup();
+    var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark && S.oneDark) return S.oneDark;
+    return [];
+  }
+
+  function fpCmSetDoc(text) {
+    if (!_fpCmView) return;
+    _fpCmView.dispatch({ changes: { from: 0, to: _fpCmView.state.doc.length, insert: text } });
+  }
+
+  function fpCmGetDoc() { return _fpCmView ? _fpCmView.state.doc.toString() : _fpPreviewContent; }
+
+  // ── Readonly bar ──
+
+  function fpShowLinkedReadonlyBar(path, linkId) {
+    _fpActiveFile = { path: path, linkId: linkId };
+    var bar = document.getElementById('fp-preview-bar');
+    var pathEl = document.getElementById('fp-preview-path');
+    var revealBtn = document.getElementById('fp-btn-reveal');
+    if (bar) bar.style.display = '';
+    if (pathEl) pathEl.textContent = path;
+    if (revealBtn) revealBtn.style.display = linkId ? '' : 'none';
+  }
+
+  window.fpCopyContent = async function() {
+    var val = fpCmGetDoc();
+    if (!val) { toolsShowToast('无可复制内容'); return; }
+    try { await navigator.clipboard.writeText(val); toolsShowToast('已复制全部内容'); }
+    catch (e) { toolsShowToast('复制失败'); }
+  };
+
+  window.fpRevealFile = async function() {
+    if (!_fpActiveFile || !_fpActiveFile.linkId) { toolsShowToast('无法定位文件'); return; }
+    try {
+      var res = await fetch('/api/tools/file-links/' + encodeURIComponent(_fpActiveFile.linkId) + '/reveal');
+      if (!res.ok) { toolsShowToast('打开失败'); return; }
+    } catch (e) { toolsShowToast('打开失败'); }
+  };
 
   // ── Expose init ──
   window.toolsInit = toolsInit;

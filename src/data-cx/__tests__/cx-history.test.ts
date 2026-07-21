@@ -12,9 +12,17 @@ const { DatabaseSync } = nodeRequire('node:sqlite') as typeof import('node:sqlit
 // 用 getter 延迟读取，避免 vi.mock hoisting 与模块级 let 的 TDZ 冲突
 let tmpDbPath = ''
 let tmpDir = ''
+let extraSources: Array<{ id: 'orca'; label: string; home: string; dbPath: string }> = []
 
-vi.mock('../cx-stats.js', () => ({
-  get CX_DB_PATH() { return tmpDbPath },
+vi.mock('../cx-data-sources.js', () => ({
+  getCxDataSources: () => [
+    { id: 'default', label: '本机', home: tmpDir, dbPath: tmpDbPath },
+    ...extraSources,
+  ],
+  getCxDataSource: (sourceId?: string) => [
+    { id: 'default', label: '本机', home: tmpDir, dbPath: tmpDbPath },
+    ...extraSources,
+  ].find(source => source.id === sourceId) ?? { id: 'default', label: '本机', home: tmpDir, dbPath: tmpDbPath },
 }))
 
 function buildDb(): InstanceType<typeof DatabaseSync> {
@@ -48,14 +56,16 @@ const userLine = (text: string) =>
 
 describe('loadCxHistory — 临时会话归类与首条提示词标题', () => {
   let loadCxHistory: typeof import('../cx-history.js').loadCxHistory
+  let loadCxConversation: typeof import('../cx-history.js').loadCxConversation
 
   beforeEach(async () => {
     tmpDbPath = join(tmpdir(), 'cx-hist-' + randomUUID() + '.sqlite')
     tmpDir = join(tmpdir(), 'cx-hist-' + randomUUID())
+    extraSources = []
     mkdirSync(tmpDir, { recursive: true })
     // resetModules 让 cx-rollout 的首条提示词缓存随每个用例重置
     vi.resetModules()
-    ;({ loadCxHistory } = await import('../cx-history.js'))
+    ;({ loadCxHistory, loadCxConversation } = await import('../cx-history.js'))
   })
 
   afterEach(() => {
@@ -160,5 +170,59 @@ describe('loadCxHistory — 临时会话归类与首条提示词标题', () => {
     db.close()
     const data = loadCxHistory()
     expect(data.sessions.find(s => s.id === 'sess-unnamed')!.title).toBe('未命名会话')
+  })
+
+  it('合并 Orca 数据源并标记会话来源', () => {
+    const orcaDbPath = join(tmpdir(), 'cx-orca-' + randomUUID() + '.sqlite')
+    const rollout = join(tmpDir, 'orca-rollout.jsonl')
+    writeFileSync(rollout, userLine('来自 Orca 的提问') + '\n', 'utf-8')
+    const orcaDb = new DatabaseSync(orcaDbPath, { open: true })
+    orcaDb.exec(`
+      CREATE TABLE threads (
+        id TEXT, rollout_path TEXT, cwd TEXT, title TEXT,
+        tokens_used INTEGER, model TEXT, created_at INTEGER, updated_at INTEGER, archived INTEGER
+      )
+    `)
+    insertThread(orcaDb, { id: 'orca-session', rollout_path: rollout, cwd: '/Users/admin/orca-project', title: '', tokens_used: 300, model: 'gpt-5', created_at: 1700000000, updated_at: 1700000300 })
+    orcaDb.close()
+    extraSources = [{ id: 'orca', label: 'Orca', home: tmpDir, dbPath: orcaDbPath }]
+
+    const data = loadCxHistory()
+    expect(data.sessions).toContainEqual(expect.objectContaining({
+      id: 'orca-session', source: 'orca', sourceLabel: 'Orca', title: '来自 Orca 的提问',
+    }))
+
+    rmSync(orcaDbPath, { force: true })
+  })
+
+  it('按来源从 Orca 数据库加载会话详情', () => {
+    const orcaDbPath = join(tmpdir(), 'cx-orca-detail-' + randomUUID() + '.sqlite')
+    const rollout = join(tmpDir, 'orca-detail.jsonl')
+    writeFileSync(rollout, [
+      userLine('Orca 的用户消息'),
+      JSON.stringify({
+        type: 'response_item',
+        payload: { type: 'message', role: 'assistant', content: [{ type: 'output_text', text: 'Orca 的助手回复' }] },
+      }),
+    ].join('\n') + '\n', 'utf-8')
+    const orcaDb = new DatabaseSync(orcaDbPath, { open: true })
+    orcaDb.exec(`
+      CREATE TABLE threads (
+        id TEXT, rollout_path TEXT, cwd TEXT, title TEXT,
+        tokens_used INTEGER, model TEXT, created_at INTEGER, updated_at INTEGER, archived INTEGER
+      )
+    `)
+    insertThread(orcaDb, { id: 'orca-detail', rollout_path: rollout, cwd: '/Users/admin/orca-project', title: '', tokens_used: 300, model: 'gpt-5', created_at: 1700000000, updated_at: 1700000300 })
+    orcaDb.close()
+    extraSources = [{ id: 'orca', label: 'Orca', home: tmpDir, dbPath: orcaDbPath }]
+
+    const data = loadCxConversation('orca-detail', 'orca')
+    expect(data.path).toBe(rollout)
+    expect(data.messages).toEqual([
+      expect.objectContaining({ role: 'user', text: 'Orca 的用户消息' }),
+      expect.objectContaining({ role: 'assistant', text: 'Orca 的助手回复' }),
+    ])
+
+    rmSync(orcaDbPath, { force: true })
   })
 })

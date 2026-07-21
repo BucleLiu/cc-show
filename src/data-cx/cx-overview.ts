@@ -25,6 +25,7 @@ export interface CxTrendDay {
 
 export interface CxOverviewSession {
   id: string
+  source: 'default' | 'orca'
   title: string
   projectName: string
   timeUpdated: number  // unix seconds
@@ -153,6 +154,7 @@ export function loadCxOverview(): CxOverviewData {
     .slice(0, 5)
     .map(s => ({
       id:          s.id,
+      source:      s.source,
       title:       s.title,
       projectName: s.projectName,
       timeUpdated: s.timeUpdated,

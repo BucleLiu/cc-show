@@ -65,6 +65,14 @@ import {
   revealJsonLink,
   pickNativePath,
   JsonLinkError,
+  listFileLinks,
+  addFileLink,
+  removeFileLink,
+  expandFileLink,
+  readFileLinkContent,
+  readFileByPath,
+  expandFileDir,
+  revealFileLink,
 } from '../data/tools.js'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -270,7 +278,8 @@ export async function handleRequest(
           res.end(JSON.stringify({ error: 'sessionId is required' }))
           return
         }
-        return sendJson(res, loadCxConversation(sessionId))
+        const source = url.searchParams.get('source') ?? undefined
+        return sendJson(res, loadCxConversation(sessionId, source))
       }
       if (path === '/api/cx/stats')    return sendJson(res, loadCxStats())
       if (path === '/api/cx/overview') {
@@ -579,6 +588,80 @@ export async function handleRequest(
           return
         }
       }
+
+      // GET /api/tools/file-links — list all file links
+      if (path === '/api/tools/file-links') {
+        try {
+          return sendJson(res, listFileLinks())
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(err) }))
+          return
+        }
+      }
+
+      // GET /api/tools/file-links/:id/tree
+      const fileLinksTreeMatch = path.match(/^\/api\/tools\/file-links\/([^/]+)\/tree$/)
+      if (fileLinksTreeMatch) {
+        const id = fileLinksTreeMatch[1]
+        try {
+          return sendJson(res, expandFileLink(id))
+        } catch (err) {
+          if (err instanceof JsonLinkError) {
+            const code = err.code
+            const status = code === 'LINK_NOT_FOUND' || code === 'TARGET_MISSING' ? 404 : 400
+            res.writeHead(status, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: err.message }))
+            return
+          }
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(err) }))
+          return
+        }
+      }
+
+      // GET /api/tools/file-links/:id/content
+      const fileLinksContentMatch = path.match(/^\/api\/tools\/file-links\/([^/]+)\/content$/)
+      if (fileLinksContentMatch) {
+        const id = fileLinksContentMatch[1]
+        try {
+          return sendJson(res, readFileLinkContent(id))
+        } catch (err) {
+          if (err instanceof JsonLinkError) {
+            const code = err.code
+            const status = code === 'LINK_NOT_FOUND' || code === 'TARGET_MISSING' ? 404 : 400
+            res.writeHead(status, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: err.message }))
+            return
+          }
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(err) }))
+          return
+        }
+      }
+
+      // GET /api/tools/file-links/:id/reveal
+      const fileLinksRevealMatch = path.match(/^\/api\/tools\/file-links\/([^/]+)\/reveal$/)
+      if (fileLinksRevealMatch) {
+        const id = fileLinksRevealMatch[1]
+        try {
+          revealFileLink(id)
+          res.writeHead(204)
+          res.end()
+          return
+        } catch (err) {
+          if (err instanceof JsonLinkError) {
+            const code = err.code
+            const status = code === 'LINK_NOT_FOUND' || code === 'TARGET_MISSING' ? 404 : 400
+            res.writeHead(status, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: err.message }))
+            return
+          }
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(err) }))
+          return
+        }
+      }
     }
 
     // ── CLAUDE.md API (GET) ─────────────────────────────────────────────────
@@ -688,6 +771,28 @@ export async function handleRequest(
         const id = jsonLinksDelMatch[1]
         try {
           removeJsonLink(id)
+          res.writeHead(204)
+          res.end()
+          return
+        } catch (err) {
+          if (err instanceof JsonLinkError) {
+            const status = err.code === 'LINK_NOT_FOUND' ? 404 : 400
+            res.writeHead(status, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: err.message }))
+            return
+          }
+          res.writeHead(500, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: String(err) }))
+          return
+        }
+      }
+
+      // DELETE /api/tools/file-links/:id
+      const fileLinksDelMatch = path.match(/^\/api\/tools\/file-links\/([^/]+)$/)
+      if (fileLinksDelMatch) {
+        const id = fileLinksDelMatch[1]
+        try {
+          removeFileLink(id)
           res.writeHead(204)
           res.end()
           return
@@ -1148,6 +1253,98 @@ export async function handleRequest(
               return
             }
             const result = expandJsonDir(input.path)
+            return sendJson(res, result)
+          } catch (err) {
+            if (err instanceof JsonLinkError) {
+              const code = err.code
+              const status = code === 'NOT_FOUND' ? 404 : 400
+              res.writeHead(status, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: err.message, code }))
+              return
+            }
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: String(err) }))
+          }
+        })
+        return
+      }
+
+      // POST /api/tools/file-links — add file link
+      if (path === '/api/tools/file-links') {
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          try {
+            const input = JSON.parse(body) as { path?: string; label?: string }
+            if (!input.path) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'path is required' }))
+              return
+            }
+            const link = addFileLink({ path: input.path, label: input.label })
+            const bodyBuf = Buffer.from(JSON.stringify(link), 'utf-8')
+            res.writeHead(201, {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Content-Length': bodyBuf.length,
+            })
+            res.end(bodyBuf)
+          } catch (err) {
+            if (err instanceof JsonLinkError) {
+              const code = err.code
+              const status = code === 'NOT_FOUND' ? 404 : code === 'DUPLICATE' ? 409 : 400
+              res.writeHead(status, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: err.message, code }))
+              return
+            }
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: String(err) }))
+          }
+        })
+        return
+      }
+
+      // POST /api/tools/file-links/read — read file by absolute path
+      if (path === '/api/tools/file-links/read') {
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          try {
+            const input = JSON.parse(body) as { path?: string }
+            if (!input.path) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'path is required' }))
+              return
+            }
+            const result = readFileByPath(input.path)
+            return sendJson(res, result)
+          } catch (err) {
+            if (err instanceof JsonLinkError) {
+              const code = err.code
+              const status = code === 'NOT_FOUND' ? 404 : 400
+              res.writeHead(status, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: err.message, code }))
+              return
+            }
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: String(err) }))
+          }
+        })
+        return
+      }
+
+      // POST /api/tools/file-links/expand-dir — expand arbitrary directory (lazy)
+      if (path === '/api/tools/file-links/expand-dir') {
+        let body = ''
+        req.on('data', (chunk: Buffer) => { body += chunk.toString() })
+        req.on('end', () => {
+          try {
+            const input = JSON.parse(body) as { path?: string }
+            if (!input.path) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'path is required' }))
+              return
+            }
+            const result = expandFileDir(input.path)
             return sendJson(res, result)
           } catch (err) {
             if (err instanceof JsonLinkError) {

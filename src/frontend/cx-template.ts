@@ -238,6 +238,7 @@ html, body { height: 100%; background: var(--bg-base); color: var(--text-pri); o
 }
 .panel-search:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
 .panel-search::placeholder { color: var(--text-muted); }
+.session-source-badge { margin-left: 5px; padding: 1px 5px; border-radius: 4px; font-size: 9px; font-weight: 600; color: #047857; background: #d1fae5; vertical-align: 1px; }
 
 /* ── History module ── */
 .project-panel {
@@ -1308,7 +1309,7 @@ function switchModule(id, pushHash) {
       if (S.history.pendingSession) {
         const ps = S.history.pendingSession;
         S.history.pendingSession = null;
-        selectSession(ps.id, ps.tokensUsed, ps.title);
+        selectSession(ps.id, ps.tokensUsed, ps.title, ps.source);
         requestAnimationFrame(() => {
           const card = document.querySelector('.session-card.selected');
           if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1319,7 +1320,7 @@ function switchModule(id, pushHash) {
         S.history._pendingHashSession = null;
         const session = S.history.data.sessions.find(s => s.id === sid);
         if (session) {
-          selectSession(session.id, session.tokensUsed, session.title);
+          selectSession(session.id, session.tokensUsed, session.title, session.source);
           requestAnimationFrame(() => {
             const card = document.querySelector('.session-card.selected');
             if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1342,8 +1343,8 @@ function switchModule(id, pushHash) {
 }
 
 // Navigate from overview directly to a specific session
-function goToSession(id, tokensUsed, title) {
-  S.history.pendingSession = { id, tokensUsed, title };
+function goToSession(id, tokensUsed, title, source) {
+  S.history.pendingSession = { id, tokensUsed, title, source };
   S.history.selectedProject = null;
   switchModule('history');
 }
@@ -1472,7 +1473,7 @@ async function loadHistory() {
     if (S.history.pendingSession) {
       const ps = S.history.pendingSession;
       S.history.pendingSession = null;
-      selectSession(ps.id, ps.tokensUsed, ps.title);
+        selectSession(ps.id, ps.tokensUsed, ps.title, ps.source);
       requestAnimationFrame(() => {
         const card = document.querySelector('.session-card.selected');
         if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1484,7 +1485,7 @@ async function loadHistory() {
       S.history._pendingHashSession = null;
       const session = S.history.data.sessions.find(s => s.id === sid);
       if (session) {
-        selectSession(session.id, session.tokensUsed, session.title);
+          selectSession(session.id, session.tokensUsed, session.title, session.source);
         requestAnimationFrame(() => {
           const card = document.querySelector('.session-card.selected');
           if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -1563,11 +1564,12 @@ function renderSessionList() {
 
   let html = '';
   for (const s of sessions) {
-    const sel = S.history.selectedSession === s.id;
+    const sessionKey = s.source + ':' + s.id;
+    const sel = S.history.selectedSession === sessionKey;
     const tokens = s.tokensUsed || 0;
     const estMsgCount = s.msgCount || Math.round(tokens / 500);
     html +=
-      '<div class="session-card' + (sel ? ' selected' : '') + '" onclick="selectSession(' + esc(JSON.stringify(s.id)) + ',' + esc(JSON.stringify(tokens)) + ',' + esc(JSON.stringify(s.title)) + ')">' +
+      '<div class="session-card' + (sel ? ' selected' : '') + '" onclick="selectSession(' + esc(JSON.stringify(s.id)) + ',' + esc(JSON.stringify(tokens)) + ',' + esc(JSON.stringify(s.title)) + ',' + esc(JSON.stringify(s.source)) + ')">' +
         '<div class="session-top">' +
           '<div class="session-date">' + fmtDate(unixMs(s.timeCreated)) + '</div>' +
           (tokens > 0 ? '<div class="session-cost">' + fmtTokens(tokens) + '</div>' : '') +
@@ -1575,17 +1577,17 @@ function renderSessionList() {
         '<div class="session-title">' + highlight(s.title, q) + '</div>' +
         '<div class="session-meta">' +
           '<div class="session-id-chip" title="会话 ID: ' + esc(s.id) + '&#10;点击复制" onclick="copySessionId(' + esc(JSON.stringify(s.id)) + ', event)">#' + esc(shortSessionId(s.id)) + '</div>' +
-          '<div class="session-slug">' + esc(s.model || s.projectName || '') + (estMsgCount > 0 ? ' · ' + estMsgCount + ' 条消息' : '') + '</div>' +
+          '<div class="session-slug">' + esc(s.model || s.projectName || '') + (s.source === 'orca' ? '<span class="session-source-badge">Orca</span>' : '') + (estMsgCount > 0 ? ' · ' + estMsgCount + ' 条消息' : '') + '</div>' +
         '</div>' +
       '</div>';
   }
   el.innerHTML = html;
 }
 
-function selectSession(id, tokensUsed, title) {
-  S.history.selectedSession = id;
+function selectSession(id, tokensUsed, title, source) {
+  S.history.selectedSession = source + ':' + id;
   renderSessionList();
-  loadConversation(id, tokensUsed, title);
+  loadConversation(id, tokensUsed, title, source);
   const p = {};
   if (S.history.selectedProject) p.project = S.history.selectedProject;
   if (id) p.session = id;
@@ -1643,7 +1645,7 @@ function fullscreenButtonHtml() {
     '</button>';
 }
 
-async function loadConversation(sessionId, tokensUsed, title) {
+async function loadConversation(sessionId, tokensUsed, title, source) {
   const panel = document.getElementById('message-panel-content');
   const tokenHtml = tokensUsed > 0 ? '<div class="msg-panel-cost">' + fmtTokens(tokensUsed) + '</div>' : '';
   const safeTitle = displayTitle(title);
@@ -1656,7 +1658,7 @@ async function loadConversation(sessionId, tokensUsed, title) {
     '</div>';
 
   try {
-    const r = await fetch('/api/cx/conversation?sessionId=' + encodeURIComponent(sessionId));
+    const r = await fetch('/api/cx/conversation?sessionId=' + encodeURIComponent(sessionId) + '&source=' + encodeURIComponent(source || 'default'));
     const data = await r.json();
     const msgs = Array.isArray(data) ? data : (data && data.messages ? data.messages : []);
     const convPath = data && data.path ? data.path : '';
@@ -2279,7 +2281,7 @@ function renderCxOverview() {
     for (const s of d.recentSessions) {
       const tok = s.tokensUsed || 0;
       sessItems +=
-        '<div class="ov-sess-item" onclick="goToSession(' + esc(JSON.stringify(s.id)) + ',' + esc(JSON.stringify(tok)) + ',' + esc(JSON.stringify(s.title)) + ')" style="cursor:pointer">' +
+        '<div class="ov-sess-item" onclick="goToSession(' + esc(JSON.stringify(s.id)) + ',' + esc(JSON.stringify(tok)) + ',' + esc(JSON.stringify(s.title)) + ',' + esc(JSON.stringify(s.source)) + ')" style="cursor:pointer">' +
           '<div class="ov-sess-dot"></div>' +
           '<div class="ov-sess-body">' +
             '<div class="ov-sess-title">'+esc(s.title)+'</div>' +

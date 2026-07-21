@@ -4,7 +4,7 @@
  */
 import type { DatabaseSync as DatabaseSyncType } from 'node:sqlite'
 import { existsSync, readFileSync } from 'node:fs'
-import { CX_DB_PATH } from './cx-stats.js'
+import { getCxDataSource, getCxDataSources, type CxDataSource, type CxDataSourceId } from './cx-data-sources.js'
 import {
   isInternalAssistantText,
   isInternalUserText,
@@ -26,6 +26,8 @@ type DbInstance = InstanceType<typeof DatabaseSyncType>
 
 export interface CxSession {
   id: string
+  source: CxDataSourceId
+  sourceLabel: string
   title: string
   cwd: string
   projectName: string
@@ -81,8 +83,8 @@ interface ThreadRow {
 
 // ── DB helper ─────────────────────────────────────────────────────────────────
 
-function withDb<T>(fn: (db: DbInstance) => T): T {
-  const db = new DatabaseSync(CX_DB_PATH, { open: true })
+function withDb<T>(source: CxDataSource, fn: (db: DbInstance) => T): T {
+  const db = new DatabaseSync(source.dbPath, { open: true })
   try {
     return fn(db)
   } finally {
@@ -99,40 +101,47 @@ export function loadCxHistory(): CxHistoryData {
     stats: { totalSessions: 0, totalProjects: 0, totalTokens: 0 },
   }
 
-  if (!existsSync(CX_DB_PATH)) return empty
+  const sources = getCxDataSources().filter(source => existsSync(source.dbPath))
+  if (sources.length === 0) return empty
 
   try {
-    return withDb(db => {
-      const threads = db.prepare(`
-        SELECT id, rollout_path, cwd, title, tokens_used, model,
-               created_at, updated_at, archived
-        FROM threads
-        WHERE archived = 0
-        ORDER BY updated_at DESC
-      `).all() as unknown as ThreadRow[]
+    const sessions: CxSession[] = []
+    const projectMap = new Map<string, { count: number; lastActive: number; name: string; isTemp: boolean }>()
 
-      const visibleThreads = threads.filter(t => !isPlanHandoffText((t.title || '').trim()))
+    for (const source of sources) {
+      const sourceData = withDb(source, db => {
+        const threads = db.prepare(`
+          SELECT id, rollout_path, cwd, title, tokens_used, model,
+                 created_at, updated_at, archived
+          FROM threads
+          WHERE archived = 0
+          ORDER BY updated_at DESC
+        `).all() as unknown as ThreadRow[]
 
-      if (visibleThreads.length === 0) return empty
+        const visibleThreads = threads.filter(t => !isPlanHandoffText((t.title || '').trim()))
 
-      const sessions: CxSession[] = visibleThreads.map(t => {
-        const rp = resolveProject(t.cwd)
-        return {
-          id:           t.id,
-          title:        resolveSessionTitle(t.rollout_path, t.title),
-          cwd:          rp.directory,
-          projectName:  rp.name,
-          model:        t.model || 'unknown',
-          tokensUsed:   t.tokens_used ?? 0,
-          msgCount:     Math.max(1, Math.round((t.tokens_used ?? 0) / 500)),
-          timeCreated:  t.created_at,
-          timeUpdated:  t.updated_at,
-        }
+        const sourceSessions: CxSession[] = visibleThreads.map(t => {
+          const rp = resolveProject(t.cwd)
+          return {
+            id:           t.id,
+            source:       source.id,
+            sourceLabel:  source.label,
+            title:        resolveSessionTitle(t.rollout_path, t.title),
+            cwd:          rp.directory,
+            projectName:  rp.name,
+            model:        t.model || 'unknown',
+            tokensUsed:   t.tokens_used ?? 0,
+            msgCount:     Math.max(1, Math.round((t.tokens_used ?? 0) / 500)),
+            timeCreated:  t.created_at,
+            timeUpdated:  t.updated_at,
+          }
+        })
+
+        return { sourceSessions, visibleThreads }
       })
 
-      // Group by resolved project directory → project list
-      const projectMap = new Map<string, { count: number; lastActive: number; name: string; isTemp: boolean }>()
-      for (const t of visibleThreads) {
+      sessions.push(...sourceData.sourceSessions)
+      for (const t of sourceData.visibleThreads) {
         const rp = resolveProject(t.cwd)
         let p = projectMap.get(rp.directory)
         if (!p) {
@@ -142,8 +151,11 @@ export function loadCxHistory(): CxHistoryData {
         p.count += 1
         if (t.updated_at > p.lastActive) p.lastActive = t.updated_at
       }
+    }
 
-      const projects: CxProject[] = [...projectMap.entries()]
+    if (sessions.length === 0) return empty
+
+    const projects: CxProject[] = [...projectMap.entries()]
         .map(([directory, { count, lastActive, name, isTemp }]) => ({
           directory,
           name,
@@ -153,16 +165,16 @@ export function loadCxHistory(): CxHistoryData {
         }))
         .sort((a, b) => b.lastActive - a.lastActive)
 
-      return {
-        projects,
-        sessions,
-        stats: {
-          totalSessions: sessions.length,
-          totalProjects: projects.length,
-          totalTokens: sessions.reduce((s, c) => s + c.tokensUsed, 0),
-        },
-      }
-    })
+    sessions.sort((a, b) => b.timeUpdated - a.timeUpdated)
+    return {
+      projects,
+      sessions,
+      stats: {
+        totalSessions: sessions.length,
+        totalProjects: projects.length,
+        totalTokens: sessions.reduce((s, c) => s + c.tokensUsed, 0),
+      },
+    }
   } catch {
     return empty
   }
@@ -170,13 +182,16 @@ export function loadCxHistory(): CxHistoryData {
 
 // ── Conversation detail ───────────────────────────────────────────────────────
 
-export function loadCxConversation(sessionId: string): CxConversationResult {
+export function loadCxConversation(sessionId: string, sourceId?: string): CxConversationResult {
   if (!sessionId) return { messages: [], path: '' }
+
+  const source = getCxDataSource(sourceId)
+  if (!source || !existsSync(source.dbPath)) return { messages: [], path: '' }
 
   // Find the rollout_path for this session from the DB
   let rolloutPath: string | null = null
   try {
-    rolloutPath = withDb(db => {
+    rolloutPath = withDb(source, db => {
       const row = db.prepare(
         'SELECT rollout_path, title FROM threads WHERE id = ?'
       ).get(sessionId) as { rollout_path: string; title: string } | undefined
