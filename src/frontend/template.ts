@@ -1791,6 +1791,7 @@ ${PROMPTS_CSS}
 ${TOOLS_CSS}
 </style>
 <script>${NOTES_MARKED}</script>
+<script src="/api/assets/mermaid.js"></script>
 <script>${CODEMIRROR_BUNDLE}</script>
 </head>
 <body>
@@ -3525,6 +3526,7 @@ function renderMessages(session) {
           \`;
         }
       }).join('');
+      renderConversationMermaid(body);
     } else {
       // Fallback: show user messages from history.jsonl — hide filter btn (all turns are user)
       const filterBtn = document.getElementById('conv-filter-btn');
@@ -3573,6 +3575,36 @@ function toggleExpand(id, btn) {
   const collapsed = el.classList.contains('collapsed');
   el.classList.toggle('collapsed', !collapsed);
   btn.textContent = collapsed ? '\\u6536\\u8d77' : '\\u5c55\\u5f00\\u5168\\u6587';
+}
+
+var _conversationMermaidInitialized = false;
+function renderConversationMermaid(root) {
+  if (!window.mermaid || !window.mermaid.render) return;
+  try {
+    if (!_conversationMermaidInitialized) {
+      window.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
+      _conversationMermaidInitialized = true;
+    }
+    root.querySelectorAll('pre > code.lang-mermaid, pre > code.language-mermaid').forEach(function(code, index) {
+      var pre = code.parentElement;
+      var source = (code.textContent || '').replace(/<->>/g, '<<->>');
+      if (!pre || !source.trim()) return;
+      var id = 'conversation-mermaid-' + Date.now() + '-' + index;
+      window.mermaid.render(id, source).then(function(result) {
+        // A different session may have replaced the conversation while rendering.
+        if (!pre.isConnected) return;
+        var wrapper = document.createElement('div');
+        wrapper.className = 'conversation-mermaid';
+        wrapper.innerHTML = result.svg;
+        pre.replaceWith(wrapper);
+        if (result.bindFunctions) result.bindFunctions(wrapper);
+      }).catch(function() {
+        // Preserve the original code block when a diagram has invalid syntax.
+      });
+    });
+  } catch (_) {
+    // Mermaid is optional: regular conversation Markdown remains readable.
+  }
 }
 
 function toggleUserOnly() {

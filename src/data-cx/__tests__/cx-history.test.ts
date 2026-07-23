@@ -172,6 +172,25 @@ describe('loadCxHistory — 临时会话归类与首条提示词标题', () => {
     expect(data.sessions.find(s => s.id === 'sess-unnamed')!.title).toBe('未命名会话')
   })
 
+  it('过滤无标题、无真实用户消息且 Token 为零的空壳会话', () => {
+    const emptyRollout = join(tmpDir, 'empty.jsonl')
+    const promptRollout = join(tmpDir, 'prompt.jsonl')
+    writeFileSync(emptyRollout, userLine('<environment_context>internal</environment_context>') + '\n', 'utf-8')
+    writeFileSync(promptRollout, userLine('真实提问') + '\n', 'utf-8')
+
+    const db = buildDb()
+    insertThread(db, { id: 'empty', rollout_path: emptyRollout, cwd: '/Users/admin/foo', title: '', tokens_used: 0, model: '', created_at: 1700000000, updated_at: 1700000000 })
+    insertThread(db, { id: 'prompt', rollout_path: promptRollout, cwd: '/Users/admin/foo', title: '', tokens_used: 0, model: '', created_at: 1700000000, updated_at: 1700000001 })
+    insertThread(db, { id: 'titled', rollout_path: '', cwd: '/Users/admin/foo', title: '已命名但未开始', tokens_used: 0, model: '', created_at: 1700000000, updated_at: 1700000002 })
+    insertThread(db, { id: 'used', rollout_path: '', cwd: '/Users/admin/foo', title: '', tokens_used: 1, model: '', created_at: 1700000000, updated_at: 1700000003 })
+    db.close()
+
+    const data = loadCxHistory()
+    expect(data.sessions.map(s => s.id)).toEqual(['used', 'titled', 'prompt'])
+    expect(data.projects[0].sessionCount).toBe(3)
+    expect(data.stats.totalSessions).toBe(3)
+  })
+
   it('合并 Orca 数据源并标记会话来源', () => {
     const orcaDbPath = join(tmpdir(), 'cx-orca-' + randomUUID() + '.sqlite')
     const rollout = join(tmpDir, 'orca-rollout.jsonl')

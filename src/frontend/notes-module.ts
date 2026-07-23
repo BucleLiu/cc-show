@@ -1260,6 +1260,38 @@ function notesCopyPath() {
     if (copied) { copied.classList.add('show'); setTimeout(function() { copied.classList.remove('show'); }, 1500); }
   }).catch(function() {});
 }
+var _notesMermaidInitialized = false;
+function notesRenderMermaid(pane) {
+  if (!window.mermaid || !window.mermaid.render) return;
+  try {
+    if (!_notesMermaidInitialized) {
+      window.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
+      _notesMermaidInitialized = true;
+    }
+    var blocks = pane.querySelectorAll('pre > code.language-mermaid, pre > code.lang-mermaid');
+    blocks.forEach(function(code, index) {
+      var pre = code.parentElement;
+      // Mermaid's bidirectional sequence arrow is <<->>. Accept the common
+      // shorthand <->> as well, so existing Markdown notes still render.
+      var source = (code.textContent || '').replace(/<->>/g, '<<->>');
+      if (!pre || !source.trim()) return;
+      var id = 'notes-mermaid-' + Date.now() + '-' + index;
+      window.mermaid.render(id, source).then(function(result) {
+        // The user may have switched notes or modes while Mermaid was rendering.
+        if (!pre.isConnected) return;
+        var wrapper = document.createElement('div');
+        wrapper.className = 'notes-mermaid';
+        wrapper.innerHTML = result.svg;
+        pre.replaceWith(wrapper);
+        if (result.bindFunctions) result.bindFunctions(wrapper);
+      }).catch(function() {
+        // Keep the original code block when a diagram has invalid Mermaid syntax.
+      });
+    });
+  } catch (_) {
+    // Mermaid is optional: the rest of the note preview remains available.
+  }
+}
 function notesUpdatePreview(content, baseDir) {
   var pane = document.getElementById('notes-preview-pane');
   if (!pane) return;
@@ -1269,6 +1301,7 @@ function notesUpdatePreview(content, baseDir) {
     pane.textContent = content || '';
   }
   if (baseDir) notesRewriteLocalImages(pane, baseDir);
+  notesRenderMermaid(pane);
   notesBuildPreviewNav(pane);
 }
 function notesRewriteLocalImages(pane, baseDir) {

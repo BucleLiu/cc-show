@@ -974,6 +974,7 @@ ${NOTES_CSS}
 ${TOOLS_CSS}
 </style>
 <script>${NOTES_MARKED}</script>
+<script src="/api/assets/mermaid.js"></script>
 <script>${CODEMIRROR_BUNDLE}</script>
 </head>
 <body>
@@ -1730,6 +1731,8 @@ function renderConversation(sessionId, tokensUsed, title, msgs, convPath) {
       '<div id="conv-body" class="conv-list' + (filterActive ? ' user-only' : '') + '">' + convHtml + '</div>' +
       pathHtml +
     '</div>';
+  var renderedPanel = document.getElementById('message-panel-content');
+  if (renderedPanel) renderCodexConversationMermaid(renderedPanel);
 }
 
 function expandMsg(id, btn) {
@@ -1737,6 +1740,35 @@ function expandMsg(id, btn) {
   if (!el) return;
   el.classList.remove('collapsed');
   btn.remove();
+}
+
+var _codexConversationMermaidInitialized = false;
+function renderCodexConversationMermaid(root) {
+  if (!window.mermaid || !window.mermaid.render) return;
+  try {
+    if (!_codexConversationMermaidInitialized) {
+      window.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
+      _codexConversationMermaidInitialized = true;
+    }
+    root.querySelectorAll('pre > code.lang-mermaid, pre > code.language-mermaid').forEach(function(code, index) {
+      var pre = code.parentElement;
+      var source = (code.textContent || '').replace(/<->>/g, '<<->>');
+      if (!pre || !source.trim()) return;
+      var id = 'codex-conversation-mermaid-' + Date.now() + '-' + index;
+      window.mermaid.render(id, source).then(function(result) {
+        if (!pre.isConnected) return;
+        var wrapper = document.createElement('div');
+        wrapper.className = 'conversation-mermaid';
+        wrapper.innerHTML = result.svg;
+        pre.replaceWith(wrapper);
+        if (result.bindFunctions) result.bindFunctions(wrapper);
+      }).catch(function() {
+        // Keep invalid Mermaid source visible as a code block.
+      });
+    });
+  } catch (_) {
+    // Mermaid is optional: regular Codex messages remain readable.
+  }
 }
 
 function toggleUserOnly() {
@@ -1948,7 +1980,7 @@ function renderMarkdown(md) {
         i++;
       }
       const langLabel = lang ? '<div class="md-lang">' + esc(lang) + '</div>' : '';
-      html += '<pre>' + langLabel + '<code>' + code + '</code></pre>';
+      html += '<pre>' + langLabel + '<code class="lang-' + esc(lang) + '">' + code + '</code></pre>';
       i++;
       continue;
     }

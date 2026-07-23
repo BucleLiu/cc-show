@@ -1755,6 +1755,39 @@ export const TOOLS_JS = `
   // ── Preview dispatch ──
 
   var _fpPreviewContent = '';
+  var _fpMermaidInitialized = false;
+
+  function fpRenderMermaid(pane) {
+    if (!window.mermaid || !window.mermaid.render) return;
+    try {
+      if (!_fpMermaidInitialized) {
+        window.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
+        _fpMermaidInitialized = true;
+      }
+      var blocks = pane.querySelectorAll('pre > code.language-mermaid, pre > code.lang-mermaid');
+      blocks.forEach(function(code, index) {
+        var pre = code.parentElement;
+        // Mermaid's bidirectional sequence arrow is <<->>. Accept the common
+        // shorthand <->> as well, so existing Markdown diagrams still render.
+        var source = (code.textContent || '').replace(/<->>/g, '<<->>');
+        if (!pre || !source.trim()) return;
+        var id = 'fp-mermaid-' + Date.now() + '-' + index;
+        window.mermaid.render(id, source).then(function(result) {
+          // A new preview may have replaced this pane while Mermaid was rendering.
+          if (!pre.isConnected) return;
+          var wrapper = document.createElement('div');
+          wrapper.className = 'fp-mermaid';
+          wrapper.innerHTML = result.svg;
+          pre.replaceWith(wrapper);
+          if (result.bindFunctions) result.bindFunctions(wrapper);
+        }).catch(function() {
+          // Keep the original code block when a diagram has invalid Mermaid syntax.
+        });
+      });
+    } catch (_) {
+      // Mermaid is optional: Markdown preview remains available if it cannot initialize.
+    }
+  }
 
   function fpRenderPreview(ext, content, path, baseDir) {
     var area = document.getElementById('fp-preview-content');
@@ -1768,6 +1801,8 @@ export const TOOLS_JS = `
         area.innerHTML = '<div class="notes-preview-pane">' + (window.marked ? marked.parse(content || '') : escHtml(content || '')) + '</div>';
       } catch(e) { area.innerHTML = '<div class="notes-preview-pane">' + escHtml(content || '') + '</div>'; }
       if (baseDir) { var pane = area.querySelector('.notes-preview-pane'); if (pane) fpRewriteLocalImages(pane, baseDir); }
+      var markdownPane = area.querySelector('.notes-preview-pane');
+      if (markdownPane) fpRenderMermaid(markdownPane);
       return;
     }
 

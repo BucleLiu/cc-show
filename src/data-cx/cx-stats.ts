@@ -15,7 +15,7 @@ type DbInstance = InstanceType<typeof DatabaseSyncType>
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { resolveProject, resolveSessionTitle } from './cx-rollout.js'
+import { isEmptySession, resolveProject, resolveSessionTitle } from './cx-rollout.js'
 
 // ── DB path ──────────────────────────────────────────────────────────────────
 export const CX_DB_PATH = join(homedir(), '.codex', 'state_5.sqlite')
@@ -112,7 +112,10 @@ export function loadCxStats(): CxStatsData {
         ORDER BY updated_at DESC
       `).all() as unknown as ThreadRow[]
 
-      if (threads.length === 0) return empty
+      const visibleThreads = threads.filter(t =>
+        !isEmptySession(t.rollout_path, t.title, t.tokens_used),
+      )
+      if (visibleThreads.length === 0) return empty
 
       // 2. Group by resolved project directory → project
       const projectMap = new Map<string, {
@@ -122,7 +125,7 @@ export function loadCxStats(): CxStatsData {
         isTemp: boolean
       }>()
 
-      for (const t of threads) {
+      for (const t of visibleThreads) {
         const rp = resolveProject(t.cwd)
         let p = projectMap.get(rp.directory)
         if (!p) {
@@ -182,7 +185,7 @@ export function loadCxStats(): CxStatsData {
 
       const summary: CxStatsSummary = {
         totalProjects: projects.length,
-        totalSessions: threads.length,
+        totalSessions: visibleThreads.length,
         totalTokens:   projects.reduce((s, p) => s + p.totalTokens, 0),
       }
 

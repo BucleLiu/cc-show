@@ -145,6 +145,15 @@ function sendHtml(res: ServerResponse, html: string): void {
   res.end(body)
 }
 
+function sendJavaScript(res: ServerResponse, source: Buffer): void {
+  res.writeHead(200, {
+    'Content-Type': 'text/javascript; charset=utf-8',
+    'Content-Length': source.length,
+    'Cache-Control': 'public, max-age=86400',
+  })
+  res.end(source)
+}
+
 function send404(res: ServerResponse): void {
   res.writeHead(404, { 'Content-Type': 'text/plain' })
   res.end('Not Found')
@@ -182,6 +191,12 @@ export async function handleRequest(
   // ── GET ──────────────────────────────────────────────────────────────────
 
   if (method === 'GET') {
+    // Keep Mermaid as an external same-origin script. Its bundle includes HTML-like
+    // strings, which must not be inserted into the page template itself.
+    if (path === '/api/assets/mermaid.js') {
+      return sendJavaScript(res, readFileSync(require.resolve('mermaid/dist/mermaid.min.js')))
+    }
+
     // ── Pages ──────────────────────────────────────────────────────────────
     if (path === '/') {
       return sendHtml(res, buildPageHtml(HTML_TEMPLATE, enabledModes, noteEnabled, promptsEnabled, toolsEnabled))

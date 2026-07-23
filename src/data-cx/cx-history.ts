@@ -8,6 +8,7 @@ import { getCxDataSource, getCxDataSources, type CxDataSource, type CxDataSource
 import {
   isInternalAssistantText,
   isInternalUserText,
+  isEmptySession,
   isPlanHandoffText,
   parsePayload,
   resolveProject,
@@ -118,7 +119,10 @@ export function loadCxHistory(): CxHistoryData {
           ORDER BY updated_at DESC
         `).all() as unknown as ThreadRow[]
 
-        const visibleThreads = threads.filter(t => !isPlanHandoffText((t.title || '').trim()))
+        const visibleThreads = threads.filter(t =>
+          !isPlanHandoffText((t.title || '').trim())
+          && !isEmptySession(t.rollout_path, t.title, t.tokens_used),
+        )
 
         const sourceSessions: CxSession[] = visibleThreads.map(t => {
           const rp = resolveProject(t.cwd)

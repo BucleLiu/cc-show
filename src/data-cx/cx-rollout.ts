@@ -266,3 +266,19 @@ export function resolveSessionTitle(
   if (dbTitle && dbTitle.trim()) return dbTitle.trim()
   return UNTITLED
 }
+
+/**
+ * Ignore threads that were created but never became a user-visible session.
+ * Codex writes these when a TUI/app session is opened then abandoned, or when
+ * only runtime context is recorded. Keep any thread that has a stored title,
+ * a real user prompt, or token usage, since it may still be useful to inspect.
+ */
+export function isEmptySession(
+  rolloutPath: string | null | undefined,
+  dbTitle: string | null | undefined,
+  tokensUsed: number | null | undefined,
+): boolean {
+  if ((tokensUsed ?? 0) > 0) return false
+  if (dbTitle?.trim()) return false
+  return extractFirstUserPrompt(rolloutPath) === null
+}

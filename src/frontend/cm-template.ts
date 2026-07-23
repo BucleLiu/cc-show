@@ -697,6 +697,7 @@ ${NOTES_CSS}
 ${TOOLS_CSS}
 </style>
 <script>${NOTES_MARKED}</script>
+<script src="/api/assets/mermaid.js"></script>
 <script>${CODEMIRROR_BUNDLE}</script>
 </head>
 <body>
